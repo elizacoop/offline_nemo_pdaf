@@ -2,6 +2,8 @@
 
 NEMO-PDAF coupling routines. For the contributors to the code see MY_SRC_pdaf/initialize_pdaf.F90
 
+The code currently supports PDAF2 up to PDAF V2.3.1. It will be upgraded to PDAF3.
+
 For documentation on how to use the code, see the Wiki on https://github.com/PDAF/NEMO-PDAF.
 
 Directories:
