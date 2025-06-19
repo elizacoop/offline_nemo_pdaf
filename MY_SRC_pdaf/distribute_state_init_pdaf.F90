@@ -6,9 +6,7 @@
 !! The routine is executed by each process that is
 !! participating in the model integrations.
 !!
-!! **Calling Sequence**
-!!
-!!  - Called from: `PDAF_get_state` (as U_dist_state)
+!! Called by: PDAF_init_forecast
 !!
 subroutine distribute_state_init_pdaf(dim_p, state_p)
 

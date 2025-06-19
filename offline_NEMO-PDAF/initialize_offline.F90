@@ -120,10 +120,8 @@ contains
     use mpi
     use netcdf
     use parallel_pdaf, &
-         only: mype=>mype_world, npes=>npes_world, MPIerr, &
+         only: mype=>mype_world, npes=>npes_world, &
          abort_parallel
-    use assimilation_pdaf, &
-         only: step_null
     use nemo_pdaf, &
          only: path_dims, file_dims, tmask, tmp_4d, &
          jpiglo, jpjglo, jpk, glamt, gphit, gdept_1d, &
@@ -143,7 +141,6 @@ contains
 ! *** local variables *** 
     integer :: screen=1                           ! Verbosity flag
     integer :: i, j, k                            ! Counters
-    integer :: cnt, cnt_all, cnt_layers           ! Counters
     integer :: ncid                               ! nc file ID
     integer :: lon_dimid, lat_dimid, lvl_dimid    ! Dimension IDs
     integer :: id_gphit, id_glamt, id_nlev, id_temp  ! variable IDs

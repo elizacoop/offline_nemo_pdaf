@@ -10,7 +10,7 @@
 program MAIN_OFFLINE
 
   use parallel_pdaf, &        ! Parallelization
-       only: MPI_COMM_WORLD, MPIerr, npes_world, mype_world, &
+       only: MPI_COMM_WORLD, npes_world, mype_world, &
        init_parallel, finalize_parallel, init_parallel_pdaf, &
        comm_model
   use mod_memcount_pdaf, &    ! Memory counting
@@ -18,7 +18,7 @@ program MAIN_OFFLINE
   use timer, &                ! Timings
        only: timeit, time_tot
   use assimilation_pdaf, &    ! Dimensions
-       only: dim_state, dim_state_p, assimilate_pdaf
+       only: assimilate_pdaf
   use initialize_offline, &
        only: initialize
   use initialize_pdaf, &      

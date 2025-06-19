@@ -19,8 +19,8 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
   use parallel_pdaf, &
        only: mype_filter
   use assimilation_pdaf, &
-       only: dim_state, type_ens_init, type_central_state, ensscale, &
-       coupling_nemo, screen
+       only: type_ens_init, type_central_state, ensscale, &
+       coupling_nemo
   use io_pdaf, &
        only: path_inistate, path_ens, file_ens, file_covar, &
        read_state_mv, read_ens_mv_loop, read_ens_states, read_ens_mv_filelist

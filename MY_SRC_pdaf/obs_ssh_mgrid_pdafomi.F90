@@ -16,45 +16,45 @@
 !!
 !! Author: Nicholas Byrne, NCEO & University of Reading, UK
 !! 
-MODULE obs_ssh_mgrid_pdafomi
+module obs_ssh_mgrid_pdafomi
 
-   USE mod_kind_pdaf
-   USE parallel_pdaf, &
-      ONLY: mype_filter, abort_parallel
-   USE pdafomi, &
-      ONLY: obs_f, obs_l
-   USE nemo_pdaf, &
+   use mod_kind_pdaf
+   use parallel_pdaf, &
+      only: mype_filter, abort_parallel
+   use PDAF, &
+      only: obs_f, obs_l
+   use nemo_pdaf, &
         only: i0, j0, istart, jstart
-   USE netcdf
+   use netcdf
 
-   IMPLICIT NONE
-   SAVE
+   implicit none
+   save
 
    !> Whether to assimilate this data type
-   LOGICAL :: assim_ssh_mgrid = .false.
+   logical :: assim_ssh_mgrid = .false.
    !> Observation error standard deviation (for constant errors)
-   REAL(pwp) :: rms_ssh_mgrid = 0.1 !1
+   real(pwp) :: rms_ssh_mgrid = 0.1 !1
    !> Localization cut-off radius
-   REAL(pwp) :: lradius_ssh_mgrid = 1.0
+   real(pwp) :: lradius_ssh_mgrid = 1.0
    !> Support radius for weight function
-   REAL(pwp) :: sradius_ssh_mgrid = 1.0
+   real(pwp) :: sradius_ssh_mgrid = 1.0
    !> Whether to perform an identical twin experiment
-   LOGICAL :: twin_exp_ssh_mgrid = .FALSE.
+   logical :: twin_exp_ssh_mgrid = .false.
    !> Standard deviation for Gaussian noise in twin experiment
-   REAL(pwp) :: noise_amp_ssh_mgrid = 1
+   real(pwp) :: noise_amp_ssh_mgrid = 1
    ! NetCDF file holding observations
-   CHARACTER(lc) :: file_ssh_mgrid = 'my_nemo_ssh_file.nc'
+   character(lc) :: file_ssh_mgrid = 'my_nemo_ssh_file.nc'
    ! Name of SSH variable in the observation file
-   CHARACTER(lc) :: varname_ssh_mgrid = 'zos'
+   character(lc) :: varname_ssh_mgrid = 'zos'
 
    !> Instance of full observation data type - see `PDAFomi` for details.
-   TYPE(obs_f), TARGET, PUBLIC :: thisobs
+   type(obs_f), target, public :: thisobs
    !> Instance of local observation data type - see `PDAFomi` for details.
-   TYPE(obs_l), TARGET, PUBLIC :: thisobs_l
+   type(obs_l), target, public :: thisobs_l
 
 !$OMP THREADPRIVATE(thisobs_l)
 
-CONTAINS
+contains
 
    !>Initialize information on the observation
    !!
@@ -88,64 +88,47 @@ CONTAINS
    !!
    !! Further variables are set when the routine PDAFomi_gather_obs is called.
    !!
-   SUBROUTINE init_dim_obs_ssh_mgrid(step, dim_obs)
+   subroutine init_dim_obs_ssh_mgrid(step, dim_obs)
 
-      USE pdafomi, &
-         ONLY: PDAFomi_gather_obs
-      USE assimilation_pdaf, &
-         ONLY: filtertype, delt_obs, use_global_obs
+      use PDAF, &
+         only: PDAFomi_gather_obs
+      use assimilation_pdaf, &
+         only: filtertype, delt_obs, use_global_obs
       use statevector_pdaf, &
            only: id, sfields
-      USE parallel_pdaf, &
-         ONLY: COMM_filter
       use io_pdaf, &
            only: check
-      USE nemo_pdaf, &
-         ONLY: ni_p, nj_p, jpiglo, jpjglo, glamt, gphit, nimpp, njmpp, ndastp
+      use nemo_pdaf, &
+         only: ni_p, nj_p, jpiglo, jpjglo, glamt, gphit, ndastp
 
-      INTEGER, INTENT(in)    :: step    !< Current time step
-      INTEGER, INTENT(inout) :: dim_obs !< Dimension of full observation vector
+      integer, intent(in)    :: step    !< Current time step
+      integer, intent(inout) :: dim_obs !< Dimension of full observation vector
 
-      INTEGER :: i, j, s       ! Counters
+      integer :: i, j                          !> Counters
+      integer :: cnt_p, cnt0_p                 !> Counters
+      integer :: ncid_in                       !> ID for NetCDF file
+      integer :: nc_step = 0                   !> Step for observations in NetCDF file
+      integer :: id_var                        !> IDs for fields
+      integer :: pos(3), cnt(3)                !> NetCDF position arrays for 3D field
+      integer :: dim_obs_p                     !> Number of process-local observations
+      integer :: i_obs, j_obs                  !> Global gridbox coordinates of observations
+      real(pwp), allocatable :: obs(:, :, :)   !> Global observation field
+      real(pwp), allocatable :: obs_p(:)       !> PE-local observation vector
+      real(pwp), allocatable :: ivar_obs_p(:)  !> PE-local inverse observation error variance
+      real(pwp), allocatable :: ocoord_p(:, :) !> PE-local observation coordinates
+      real(pwp) :: rad_conv = 3.141592653589793/180.0 !> Degree to radian conversion
 
-      !> Step for observations in NetCDF file
-      INTEGER :: nc_step = 0
-      !> Status array for NetCDF operations
-      INTEGER :: stat(50)
-      !> ID for NetCDF file
-      INTEGER :: ncid_in
-      !> IDs for fields
-      INTEGER :: id_var
-      !> NetCDF position arrays for 3D field
-      INTEGER :: pos(3), cnt(3)
-      !> Global observation field
-      REAL(pwp), ALLOCATABLE :: obs(:, :, :)
-
-      !> Number of process-local observations
-      INTEGER :: dim_obs_p
-      !> Counters
-      INTEGER :: cnt_p, cnt0_p
-      !> Global gridbox coordinates of observations
-      INTEGER :: i_obs, j_obs
-      !> PE-local observation vector
-      REAL(pwp), ALLOCATABLE :: obs_p(:)
-      !> PE-local inverse observation error variance
-      REAL(pwp), ALLOCATABLE :: ivar_obs_p(:)
-      !> PE-local observation coordinates
-      REAL(pwp), ALLOCATABLE :: ocoord_p(:, :)
-      !> Degree to radian conversion
-      REAL(pwp) :: rad_conv = 3.141592653589793/180.0
 
       ! *****************************
       ! *** Global setting config ***
       ! *****************************
 
-      IF (mype_filter == 0) &
-         WRITE (*, '(a,4x,a)') 'NEMO-PDAF', 'Assimilate observations - obs_ssh_mgrid'
+      if (mype_filter == 0) &
+         write (*, '(a,4x,a)') 'NEMO-PDAF', 'Assimilate observations - obs_ssh_mgrid'
 
       ! Store whether to assimilate this observation type (used in routines
       ! below)
-      IF (assim_ssh_mgrid) thisobs%doassim = 1
+      if (assim_ssh_mgrid) thisobs%doassim = 1
 
       ! Specify type of distance computation
       thisobs%disttype = 3   ! 3=Haversine
@@ -162,22 +145,22 @@ CONTAINS
       ! **********************************
 
       ! Format of ndastp is YYYYMMDD
-      IF (mype_filter == 0) THEN
-         WRITE (*, '(a, 4x, a, 1x, i8)') &
+      if (mype_filter == 0) then
+         write (*, '(a, 4x, a, 1x, i8)') &
               'NEMO-PDAF', '--- obs_ssh_mgrid current date:', ndastp
-         WRITE (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of SSH file variable: ', TRIM(varname_ssh_mgrid)
-      END IF
+         write (*, '(a,4x,a,a)') 'NEMO-PDAF', '--- name of SSH file variable: ', trim(varname_ssh_mgrid)
+      end if
 
       call check( nf90_open(file_ssh_mgrid, NF90_NOWRITE, ncid_in) )
 
-      call check( nf90_inq_varid(ncid_in, TRIM(varname_ssh_mgrid), id_var) )
+      call check( nf90_inq_varid(ncid_in, trim(varname_ssh_mgrid), id_var) )
 
-      ALLOCATE (obs(jpiglo, jpjglo, 1))
+      allocate (obs(jpiglo, jpjglo, 1))
       ! Increment time in NetCDF file so correct obs read
       nc_step = nc_step + delt_obs
 
       nc_step = 40
-IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_step, 'is hard-coded'
+if (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_step, 'is hard-coded'
 
       pos = (/1, 1, nc_step/)
       cnt = (/jpiglo, jpjglo, 1/)
@@ -194,34 +177,34 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
 
       cnt_p = 0
 
-      DO j = 1, nj_p
-         DO i = 1, ni_p
+      do j = 1, nj_p
+         do i = 1, ni_p
             ! Convert to global coordinates
             cnt_p = cnt_p + 1
-         END DO
-      END DO
+         end do
+      end do
 
       ! Set number of local observations
       dim_obs_p = cnt_p
 
-      IF (cnt_p == 0) WRITE (*, '(/9x, a, i3, 3x, a, i4)') &
+      if (cnt_p == 0) write (*, '(/9x, a, i3, 3x, a, i4)') &
          'WARNING: No ssh_mgrid observations on PE:', mype_filter, &
          'NetCDF file step=', nc_step
 
-      obs_nonzero: IF (dim_obs_p > 0) THEN
+      obs_nonzero: if (dim_obs_p > 0) then
          ! Vector of observations on the process sub-domain
-         ALLOCATE (obs_p(dim_obs_p))
+         allocate (obs_p(dim_obs_p))
          ! Coordinate array of observations on the process sub-domain
-         ALLOCATE (ocoord_p(2, dim_obs_p))
+         allocate (ocoord_p(2, dim_obs_p))
          ! Coordinate array for observation operator
-         ALLOCATE (thisobs%id_obs_p(1, dim_obs_p))
-         ALLOCATE (ivar_obs_p(dim_obs_p))
+         allocate (thisobs%id_obs_p(1, dim_obs_p))
+         allocate (ivar_obs_p(dim_obs_p))
 
          cnt_p = 0
          cnt0_p = 0
 
-         DO j = 1, nj_p
-            DO i = 1, ni_p
+         do j = 1, nj_p
+            do i = 1, ni_p
                ! State vector index counter for observation operator.
                cnt0_p = cnt0_p + 1
 
@@ -238,19 +221,19 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
 
                ! Coordinates for observation operator (gridpoint)
                thisobs%id_obs_p(1, cnt_p) = cnt0_p + sfields(id%ssh)%off
-            END DO
-         END DO
-      ELSE
+            end do
+         end do
+      else
          ! No observations on PE, create dummy arrays to pass to PDAFOMI
-         ALLOCATE (obs_p(1))
-         ALLOCATE (ivar_obs_p(1))
-         ALLOCATE (ocoord_p(2, 1))
-         ALLOCATE (thisobs%id_obs_p(1, 1))
+         allocate (obs_p(1))
+         allocate (ivar_obs_p(1))
+         allocate (ocoord_p(2, 1))
+         allocate (thisobs%id_obs_p(1, 1))
          obs_p = -999999.0
-         ivar_obs_p = EPSILON(ivar_obs_p)
+         ivar_obs_p = epsilon(ivar_obs_p)
          ocoord_p = 0
          thisobs%id_obs_p = 1
-      END IF obs_nonzero
+      end if obs_nonzero
 
       ! ****************************************************************
       ! *** Define observation errors for process-local observations ***
@@ -263,15 +246,15 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       ! *** For twin experiment: Read synthetic observations  ***
       ! *********************************************************
 
-      IF (twin_exp_ssh_mgrid) THEN
-         IF (dim_obs_p > 0) CALL add_noise(dim_obs_p, obs_p)
-      END IF
+      if (twin_exp_ssh_mgrid) then
+         if (dim_obs_p > 0) call add_noise(dim_obs_p, obs_p)
+      end if
 
       ! ****************************************
       ! *** Gather global observation arrays ***
       ! ****************************************
 
-      CALL PDAFomi_gather_obs(thisobs, dim_obs_p, obs_p, ivar_obs_p, ocoord_p, &
+      call PDAFomi_gather_obs(thisobs, dim_obs_p, obs_p, ivar_obs_p, ocoord_p, &
                               thisobs%ncoord, lradius_ssh_mgrid, dim_obs)
 
       ! ********************
@@ -279,13 +262,13 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
       ! ********************
 
       ! Deallocate all local arrays
-      DEALLOCATE (obs)
-      DEALLOCATE (obs_p, ocoord_p, ivar_obs_p)
+      deallocate (obs)
+      deallocate (obs_p, ocoord_p, ivar_obs_p)
 
       ! Arrays in THISOBS have to be deallocated after the analysis step
       ! by a call to deallocate_obs() in prepoststep_pdaf.
 
-   END SUBROUTINE init_dim_obs_ssh_mgrid
+   end subroutine init_dim_obs_ssh_mgrid
 
    !>###Implementation of observation operator
    !>
@@ -294,29 +277,29 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
    !>
    !>The routine is called by all filter processes.
    !>
-   SUBROUTINE obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
+   subroutine obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
 
-      USE pdafomi, &
-         ONLY: PDAFomi_obs_op_gridpoint
+      use PDAF, &
+         only: PDAFomi_obs_op_gridpoint
 
       !> PE-local state dimension
-      INTEGER, INTENT(in) :: dim_p
+      integer, intent(in) :: dim_p
       !> Dimension of full observed state (all observed fields)
-      INTEGER, INTENT(in) :: dim_obs
+      integer, intent(in) :: dim_obs
       !> PE-local model state
-      REAL(pwp), INTENT(in) :: state_p(dim_p)
+      real(pwp), intent(in) :: state_p(dim_p)
       !> Full observed state
-      REAL(pwp), INTENT(inout) :: ostate(dim_obs)
+      real(pwp), intent(inout) :: ostate(dim_obs)
 
       ! ******************************************************
       ! *** Apply observation operator H on a state vector ***
       ! ******************************************************
 
-      IF (thisobs%doassim == 1) THEN
-         CALL PDAFomi_obs_op_gridpoint(thisobs, state_p, ostate)
-      END IF
+      if (thisobs%doassim == 1) then
+         call PDAFomi_obs_op_gridpoint(thisobs, state_p, ostate)
+      end if
 
-   END SUBROUTINE obs_op_ssh_mgrid
+   end subroutine obs_op_ssh_mgrid
 
    !>###Initialize local information on the module-type observation
    !>
@@ -329,65 +312,65 @@ IF (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
    !>different localization radius and localization functions
    !>for each observation type and local analysis domain.
    !>
-   SUBROUTINE init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
+   subroutine init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
 
-      USE pdafomi, &
-         ONLY: PDAFomi_init_dim_obs_l
-      USE assimilation_pdaf, &
-         ONLY: domain_coords, locweight
+      use PDAF, &
+         only: PDAFomi_init_dim_obs_l
+      use assimilation_pdaf, &
+         only: domain_coords, locweight
 
       !> Index of current local analysis domain
-      INTEGER, INTENT(in)  :: domain_p
+      integer, intent(in)  :: domain_p
       !> Current time step
-      INTEGER, INTENT(in)  :: step
+      integer, intent(in)  :: step
       !> Full dimension of observation vector
-      INTEGER, INTENT(in)  :: dim_obs
+      integer, intent(in)  :: dim_obs
       !> Local dimension of observation vector
-      INTEGER, INTENT(out) :: dim_obs_l
+      integer, intent(out) :: dim_obs_l
 
       ! **********************************************
       ! *** Initialize local observation dimension ***
       ! **********************************************
 
-      CALL PDAFomi_init_dim_obs_l(thisobs_l, thisobs, domain_coords, &
+      call PDAFomi_init_dim_obs_l(thisobs_l, thisobs, domain_coords, &
            locweight, lradius_ssh_mgrid, sradius_ssh_mgrid, dim_obs_l)
 
-   END SUBROUTINE init_dim_obs_l_ssh_mgrid
+   end subroutine init_dim_obs_l_ssh_mgrid
 
    !>###Routine to add model error.
    !>
-   SUBROUTINE add_noise(dim_obs_p, obs)
+   subroutine add_noise(dim_obs_p, obs)
 
       !> Number of process-local observations
-      INTEGER, INTENT(in) :: dim_obs_p
+      integer, intent(in) :: dim_obs_p
       !> Process-local observations
-      REAL, INTENT(inout) :: obs(dim_obs_p)
+      real, intent(inout) :: obs(dim_obs_p)
 
       !> Random noise
-      REAL, ALLOCATABLE :: noise(:)
+      real, allocatable :: noise(:)
       !> Seed for random number generator
-      INTEGER, SAVE :: iseed(4)
+      integer, save :: iseed(4)
       !> Flag for first call
-      LOGICAL, SAVE :: firststep = .TRUE.
+      logical, save :: firststep = .true.
 
       ! Seeds taken from PDAF Lorenz96 routine
-      IF (firststep) THEN
-         WRITE (*, '(9x, a)') '--- Initialize seed for ssh_mgrid noise'
+      if (firststep) then
+         write (*, '(9x, a)') '--- Initialize seed for ssh_mgrid noise'
          iseed(1) = 2*220 + 1
          iseed(2) = 2*100 + 5
          iseed(3) = 2*10 + 7
          iseed(4) = 2*30 + 9
-         firststep = .FALSE.
-      END IF
+         firststep = .false.
+      end if
 
       ! Generate random Gaussian noise
-      ALLOCATE (noise(dim_obs_p))
-      CALL dlarnv(3, iseed, dim_obs_p, noise)
+      allocate (noise(dim_obs_p))
+      call dlarnv(3, iseed, dim_obs_p, noise)
 
       obs = obs + (noise_amp_ssh_mgrid*noise)
 
-      DEALLOCATE (noise)
+      deallocate (noise)
 
-   END SUBROUTINE add_noise
+   end subroutine add_noise
 
- END MODULE obs_ssh_mgrid_pdafomi
+ end module obs_ssh_mgrid_pdafomi

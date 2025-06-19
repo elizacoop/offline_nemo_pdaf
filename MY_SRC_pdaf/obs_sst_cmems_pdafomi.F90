@@ -27,10 +27,10 @@
 !!
 module obs_sst_cmems_pdafomi
 
-  USE mod_kind_pdaf
+  use mod_kind_pdaf
   use parallel_pdaf, &
        only: mype_filter    ! Rank of filter process
-  use PDAFomi, &
+  use PDAF, &
        only: obs_f, obs_l   ! Declaration of observation data types
  
   implicit none
@@ -41,6 +41,7 @@ module obs_sst_cmems_pdafomi
   real(pwp) :: rms_obs_sst_cmems = 0.8  !< Observation error standard deviation (for constant errors)
   real(pwp) :: lradius_sst_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_sst_cmems = 1.0  !< Support radius for weight function
+  real(pwp) :: omit_sst_cmems = 0.0     !< Omit obseratiob if deviation is too large
   integer :: mode_sst_cmems = 0         !< Observation mode: 
                                         !< (0) linear interpolation
                                         !< (1) super-obbing: average 4 observation values
@@ -101,7 +102,7 @@ contains
   subroutine init_dim_obs_sst_cmems(step, dim_obs)
 
     use netcdf
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
     use assimilation_pdaf, &
          only: filtertype, screen, use_global_obs
@@ -132,9 +133,7 @@ contains
     real(pwp), allocatable :: ivar_obs_p(:)  ! PE-local inverse observation error variance
     real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates 
     logical :: doassim_now=.true.            ! Whether we assimilate the observation at the current time
-    integer(4) :: status                     ! Status flag for availability of observations
     character(len=100) :: file_full          ! filename including path
-    character(len=2) :: strday               ! day as string
     integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
     integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
     integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
@@ -210,6 +209,9 @@ contains
 
     ! In case of MPI parallelization restrict observations to sub-domains
     if (npes_filter>1) thisobs%use_global_obs = use_global_obs
+
+    ! Omit observation with too large innovation
+    if (omit_sst_cmems > 0.0) thisobs%inno_omit = omit_sst_cmems
 
 
 ! **********************************
@@ -887,7 +889,7 @@ contains
 !!
   subroutine obs_op_sst_cmems(dim_p, dim_obs, state_p, ostate)
 
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_obs_op_interp_lin, PDAFomi_obs_op_gridpoint
 
     implicit none
@@ -941,10 +943,10 @@ contains
 !!
   subroutine init_dim_obs_l_sst_cmems(domain_p, step, dim_obs, dim_obs_l)
 
-    use PDAFomi, &
+    use PDAF, &
          only: PDAFomi_init_dim_obs_l
     use nemo_pdaf, &
-         only: wet_pts, nwet
+         only: wet_pts
     use assimilation_pdaf, &
          only: domain_coords, locweight
 
@@ -1001,7 +1003,7 @@ contains
   subroutine localize_covar_sst_cmems(dim_p, dim_obs, HP_p, HPH, coords_p)
 
     ! Include PDAFomi function
-    use PDAFomi, only: PDAFomi_localize_covar
+    use PDAF, only: PDAFomi_localize_covar
 
     ! Include localization radius and local coordinates
     use assimilation_pdaf, &   

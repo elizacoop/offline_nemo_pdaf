@@ -57,6 +57,8 @@ contains
 !!
    subroutine init_parallel_pdaf(mpi_comm)
 
+     use PDAF, &
+          only: PDAF_set_comm_pdaf
 #ifndef PDAF_OFFLINE
       use in_out_manager, only: cxios_context
 #endif
@@ -210,6 +212,12 @@ contains
       ! ****************************************************
 
       mpi_comm = COMM_model
+
+      ! *****************************************************
+      ! *** Set communicator within which PDAF operates.  ***
+      ! *****************************************************
+
+      call PDAF_set_comm_pdaf(COMM_ensemble)
 
 
 #ifndef PDAF_OFFLINE

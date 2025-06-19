@@ -131,9 +131,8 @@ contains
 
 ! *** Local variables ***
     integer :: cnt               ! Counter for fields in the state vector
-    integer :: id_trc            ! Index of BGC (tracer) variables
-
 #if defined key_top
+    integer :: id_trc            ! Index of BGC (tracer) variables
     namelist /state_vector/ screen, n_fields_covar, &
          sv_temp, sv_salt, sv_ssh, sv_uvel, sv_vvel, &
          sv_trc
@@ -160,6 +159,7 @@ contains
 #endif
 
 ! *** Read namelist file for state vector setup
+
     open (500,file='namelist_cfg.pdaf')
     read (500,NML=state_vector)
     close (500)

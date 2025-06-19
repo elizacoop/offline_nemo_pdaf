@@ -1,4 +1,3 @@
-!$Id: timer.F90 266 2019-11-28 12:49:57Z lnerger $
 !BOP
 !
 ! !MODULE:

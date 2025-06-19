@@ -11,7 +11,7 @@ contains
   subroutine sample_ens_from_covar(filename_cov, dim_p, dim_ens, state_p, ens_p)
 
     use mod_kind_pdaf
-    use pdaf_interfaces_module, &
+    use PDAF, &
          only: PDAF_SampleEns
     use io_pdaf, &
          only: read_eof_cov

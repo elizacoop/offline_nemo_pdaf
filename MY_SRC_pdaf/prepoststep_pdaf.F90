@@ -23,7 +23,7 @@
 !! 
 !! **Calling Sequence**
 !! 
-!!  - Called by: `PDAF_get_state` (as U_prepoststep) `PDAF_X_update` (as U_prepoststep)
+!! Called by: PDAF_init_forecst and PDAF3_assimilate
 !! 
 subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
      state_p, Uinv, ens_p, flag)

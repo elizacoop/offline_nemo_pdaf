@@ -509,7 +509,6 @@ end subroutine read_ens_mv_filelist
 !!
   subroutine read_eof_cov(filename_cov, dim_state, dim_p, rank, state_p, eofV, svals, readmean)
 
-    use nemo_pdaf, only: dim_2d_p, dim_3d_p
     use netcdf
 
 ! *** Arguments ***
@@ -524,7 +523,7 @@ end subroutine read_ens_mv_filelist
 
 ! *** Local variables ***
     integer                :: ncid, dimid              ! file and dimension id
-    integer                :: dim_file, rank_file      ! dimension size
+    integer                :: rank_file                ! dimension size
     integer                :: varid                    ! variable id
     integer                :: maxvar                   ! Counter to distinguish reading EOFs and mean state
     integer                :: i_rank, i_field, i_var   ! counter
@@ -652,16 +651,13 @@ end subroutine read_ens_mv_filelist
 ! *** Local variables ***
     integer(4) :: ncid
     integer(4) :: dimids_field(4)
-    integer(4) :: cnt,i,j,k, member
+    integer(4) :: i, member
     integer(4) :: dimid_rank, dimid_lvls, dimid_lat, dimid_lon, dimid_one, dimid_state
-    integer(4) :: id_lat, id_lon, id_lev, id_time, id_field, id_svals
-    integer(4) :: dimids(4)
+    integer(4) :: id_lat, id_lon, id_lev, id_field, id_svals
     integer(4) :: startC(2), countC(2)
     integer(4) :: startt(4), countt(4)
     integer(4) :: startz(1), countz(1)
     real(8)    :: fillval
-    real(8)    :: timeField(1)
-    character(len=200) :: filename
 
 
 ! *** Create file ***
@@ -1362,7 +1358,7 @@ end subroutine read_ens_mv_filelist
     integer(4) :: ncid
     integer(4) :: dimids_field(4)
     integer(4) :: i
-    integer(4) :: dimid_time, dimid_lvls, dimid_lat, dimid_lon, dimid_one
+    integer(4) :: dimid_time, dimid_lvls, dimid_lat, dimid_lon
     integer(4) :: id_dateb, id_datef
     integer(4) :: id_lat, id_lon, id_lev, id_time, id_incr
     integer(4) :: startC(2), countC(2)
@@ -1370,7 +1366,6 @@ end subroutine read_ens_mv_filelist
     integer(4) :: startz(1), countz(1)
     integer(4) :: nf_prec      ! Precision for netcdf output of model fields
     real(pwp)  :: fillval
-    real(4)    :: sfillval
     integer(4) :: verbose      ! Control verbosity
 
 

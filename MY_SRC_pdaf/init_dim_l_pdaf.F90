@@ -14,6 +14,8 @@
 subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 
   use mod_kind_pdaf
+  use PDAF, &
+       only: PDAFlocal_set_indices
   use assimilation_pdaf, &
        only: domain_coords, dim_state_p, id_lstate_in_pstate
   use statevector_pdaf, &
@@ -138,5 +140,8 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
   if (id_lstate_in_pstate(wet_pts(3,domain_p)) > dim_state_p) then
      write(*,*) 'Error: please check the global indices for local state vector'
   endif
+
+  ! Provide the index vector to PDAF
+  CALL PDAFlocal_set_indices(dim_l, id_lstate_in_pstate)
 
 end subroutine init_dim_l_pdaf

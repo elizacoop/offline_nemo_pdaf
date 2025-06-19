@@ -23,7 +23,7 @@
 !! 
 !! **Calling Sequence**
 !! 
-!!  - Called by: `PDAF_get_state` (as U_prepoststep) `PDAF_X_update` (as U_prepoststep)
+!! Called by: PDAF_init_forecst and PDAF3_assimilate
 !! 
 subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
      state_p, Uinv, ens_p, flag)
@@ -31,13 +31,13 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
   use mpi
   use mod_kind_pdaf
   use assimilation_pdaf, &
-        only: step_null, ens_restart, coupling_nemo
+        only: ens_restart, coupling_nemo
   use parallel_pdaf, &
        only: mype=>mype_filter, comm_filter, MPIerr
   use statevector_pdaf, &
-       only: n_fields, id, sfields
+       only: n_fields, sfields
   use io_pdaf, &
-        only: save_state, save_var, save_ens_sngl, path_inistate, &
+        only: save_state, save_var, save_ens_sngl, &
         file_out_state, file_out_variance, file_out_incr, save_incr, &
         write_field_mv, write_field_sngl, ids_write, &
         read_state_mv, update_restart_mv, write_increment_mv

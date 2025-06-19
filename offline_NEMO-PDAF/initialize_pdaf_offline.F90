@@ -34,13 +34,15 @@ contains
   subroutine init_pdaf()
 
     use mod_kind_pdaf
+    use PDAF, &
+         only: PDAF_init, PDAF_set_iparam, PDAF_set_rparam
     use parallel_pdaf, &
          only: n_modeltasks, task_id, COMM_model, COMM_filter, &
-         COMM_couple, COMM_ensemble, mype_ens, filterpe, abort_parallel
+         COMM_couple, mype_ens, filterpe, abort_parallel
     use assimilation_pdaf, &
          only: dim_state, dim_state_p, screen, step_null, filtertype, &
-         subtype, dim_ens, incremental, type_forget, forget, &
-         type_trans, type_sqrt, delt_obs, locweight, type_ens_init, &
+         subtype, dim_ens, type_forget, forget, &
+         type_trans, type_sqrt, locweight, type_ens_init, &
          type_central_state, type_hyb, hyb_gamma, hyb_kappa
     use nemo_pdaf, &
          only: set_nemo_grid
@@ -49,8 +51,8 @@ contains
     use utils_pdaf, &
          only: init_info_pdaf, read_config_pdaf
     use obs_sst_cmems_pdafomi, &
-         only: assim_sst_cmems, rms_obs_sst_cmems, &
-         lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems
+         only: assim_sst_cmems, rms_obs_sst_cmems, omit_sst_cmems, &
+         lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems
     use obs_ssh_mgrid_pdafomi, &
          only: assim_ssh_mgrid, rms_ssh_mgrid, &
          lradius_ssh_mgrid, sradius_ssh_mgrid
@@ -59,12 +61,9 @@ contains
     implicit none
 
 ! *** Local variables ***
-    integer :: i                 ! Counter
-    integer :: filter_param_i(7) ! Integer parameter array for filter
-    real    :: filter_param_r(3) ! Real parameter array for filter
+    integer :: filter_param_i(2) ! Integer parameter array for filter
+    real    :: filter_param_r(1) ! Real parameter array for filter
     integer :: status_pdaf       ! PDAF status flag
-    integer :: doexit, steps     ! Not used in this implementation
-    real(pwp) :: timenow         ! Not used in this implementation
 
 ! *** External subroutines ***      
     external :: init_ens_pdaf    ! Ensemble initialization
@@ -104,7 +103,7 @@ contains
       !  (12) PF
     dim_ens = n_modeltasks  ! Size of ensemble for all ensemble filters
       !   We use n_modeltasks here, initialized in init_parallel_pdaf
-    subtype = 5       ! (5) Offline mode
+    subtype = 0       ! (5) Offline mode
     type_trans = 0    ! Type of ensemble transformation
       !   SEIK/LSEIK and ESTKF/LESTKF:
       !     (0) use deterministic omega
@@ -174,6 +173,7 @@ contains
     lradius_sst_cmems = 10000.0_8 ! Radius in km for lon/lat (or in grid points)
     sradius_sst_cmems = lradius_sst_cmems  ! Support radius for 5th-order polynomial
                                   ! or distance for 1/e for exponential weighting
+    omit_sst_cmems = 0.0          ! Omit observations for too-large innovation (active for >0)
 
 
 ! ******************************************
@@ -199,13 +199,6 @@ contains
 
 
 ! *****************************************************
-! *** Set communicator within which PDAF operates.  ***
-! *****************************************************
-
-    call PDAF_set_comm_pdaf(COMM_ensemble)
-
-
-! *****************************************************
 ! *** Call PDAF initialization routine on all PEs.  ***
 ! *****************************************************
 
@@ -213,38 +206,37 @@ contains
        ! *** All filters except LKNETF/EnKF/LEnKF ***
        filter_param_i(1) = dim_state_p ! State dimension
        filter_param_i(2) = dim_ens     ! Size of ensemble
-       filter_param_i(3) = 0           ! Smoother lag (not implemented here)
-       filter_param_i(4) = incremental ! Whether to perform incremental analysis
-       filter_param_i(5) = type_forget ! Type of forgetting factor
-       filter_param_i(6) = type_trans  ! Type of ensemble transformation
-       filter_param_i(7) = type_sqrt   ! Type of transform square-root (SEIK-sub4/ESTKF)
        filter_param_r(1) = forget      ! Forgetting factor
 
        call PDAF_init(filtertype, subtype, step_null, &
-            filter_param_i, 7, &
-            filter_param_r, 2, &
+            filter_param_i, 2, &
+            filter_param_r, 1, &
             COMM_model, COMM_filter, COMM_couple, &
             task_id, 1, filterpe, init_ens_pdaf, &
             screen, status_pdaf)
+
+       call PDAF_set_iparam(5, type_forget, status_pdaf) ! Type of forgetting factor
+       call PDAF_set_iparam(6, type_trans, status_pdaf)  ! Type of ensemble transformation
+       call PDAF_set_iparam(7, type_sqrt, status_pdaf)   ! Type of transform square-root (SEIK-sub2/ESTKF)
+
     else
        ! *** LKNETF ***
        filter_param_i(1) = dim_state_p ! State dimension
        filter_param_i(2) = dim_ens     ! Size of ensemble
-       filter_param_i(3) = 0           ! Size of lag in smoother
-       filter_param_i(4) = 0           ! Not used for NETF (Whether to perform incremental analysis)
-       filter_param_i(5) = type_forget ! Type of forgetting factor
-       filter_param_i(6) = type_trans  ! Type of ensemble transformation
-       filter_param_i(7) = type_hyb    ! Type of hybrid weight
-       filter_param_r(1) = forget      ! Forgetting factor
-       filter_param_r(2) = hyb_gamma   ! Hybrid filter weight for state
-       filter_param_r(3) = hyb_kappa   ! Normalization factor for hybrid weight 
      
        call PDAF_init(filtertype, subtype, step_null, &
-            filter_param_i, 7, &
-            filter_param_r, 3, &
+            filter_param_i, 2, &
+            filter_param_r, 1, &
             COMM_model, COMM_filter, COMM_couple, &
             task_id, 1, filterpe, init_ens_pdaf, &
             screen, status_pdaf)
+
+       call PDAF_set_iparam(5, type_forget, status_pdaf) ! Type of forgetting factor
+       call PDAF_set_iparam(6, type_trans, status_pdaf)  ! Type of ensemble transformation
+       call PDAF_set_iparam(7, type_hyb, status_pdaf)    ! Hybrid filter weight for state
+       call PDAF_set_rparam(2, hyb_gamma, status_pdaf)   ! Hybrid filter weight for state
+       call PDAF_set_rparam(3, hyb_kappa, status_pdaf)   ! Normalization factor for hybrid weight 
+
     end if whichinit
 
     ! *** Check whether initialization of PDAF was successful ***

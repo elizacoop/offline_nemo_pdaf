@@ -188,7 +188,6 @@ module assimilation_pdaf
   integer, allocatable :: id_lstate_in_pstate(:) !< Indices of local state vector in global vector
   real(pwp) :: domain_coords(2)       !< Coordinates of local analysis domain
 
-  integer :: assim_flag = 0   !< Flag whether assimilation step was just done
 
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
@@ -200,24 +199,18 @@ contains
 !! 
   subroutine assimilate_pdaf()
 
-    use pdaf_interfaces_module, &
-         only: PDAFomi_put_state_local, PDAFomi_put_state_global, PDAF_get_localfilter
+    use PDAF, &
+         only: PDAF3_assim_offline
     use parallel_pdaf, &
-         only: mype_ens, abort_parallel, COMM_ensemble, MPIerr
+         only: mype_ens, abort_parallel
 
     implicit none
 
 
 ! *** Local variables ***
     integer :: status_pdaf         ! PDAF status flag
-    integer :: localfilter         ! Flag for domain-localized filter (1=true)
 
-    !! External subroutines 
-    !!  (subroutine names are passed over to PDAF in the calls to 
-    !!  PDAF_get_state and PDAF_assimilate_X. This allows the user 
-    !!  to specify the actual name of a routine. However, the 
-    !!  PDAF-internal name of a subroutine might be different from
-    !!  the external name!)
+! *** External subroutines ***
 
     ! Interface between model and PDAF, and prepoststep
     external :: collect_state_pdaf, &  ! Collect a state vector from model fields
@@ -236,39 +229,19 @@ contains
          init_dim_obs_l_pdafomi        ! Get dimension of obs. vector for local analysis domain
 
 
-    ! *********************************
-    ! *** Call assimilation routine ***
-    ! *********************************
+! *********************************
+! *** Call assimilation routine ***
+! *********************************
 
-    ! Check  whether the filter is domain-localized
-    call PDAF_get_localfilter(localfilter)
-
-    if (localfilter == 1) then
-       call PDAFomi_put_state_local(collect_state_pdaf, &
-            init_dim_obs_pdafomi, obs_op_pdafomi, &
-            prepoststep_pdaf, init_n_domains_pdaf, init_dim_l_pdaf, &
-            init_dim_obs_l_pdafomi, g2l_state_pdaf, l2g_state_pdaf, &
-            status_pdaf)
-    elseif (localfilter == 0) then
-       ! All global filters, except LEnKF
-       call PDAFomi_put_state_global(collect_state_pdaf, &
-            init_dim_obs_pdafomi, obs_op_pdafomi, &
-            prepoststep_pdaf, status_pdaf)
-    end if
-
-! *** Query whether analysis step was performed
-! *** This is also used to trigger the Euler time step for nemo_coupling='odir'
-    call PDAF_get_assim_flag(assim_flag)
-
-    if (assim_flag==1) call MPI_Barrier(COMM_ensemble, MPIerr)
-
-    if (coupling_nemo/='odir') assim_flag=0
+    call PDAF3_assim_offline(init_dim_obs_pdafomi, obs_op_pdafomi, &
+         init_n_domains_pdaf, init_dim_l_pdaf, init_dim_obs_l_pdafomi, &
+         prepoststep_pdaf, status_pdaf)
 
     ! Check for errors during execution of PDAF
     if (status_pdaf /= 0) then
        write (*, '(/1x,a6,i3,a43,i4,a1/)') &
             'ERROR ', status_pdaf, &
-            ' in PDAF_put_state - stopping! (PE ', mype_ens, ')'
+            ' in PDAF3_assimilate - stopping! (PE ', mype_ens, ')'
        call abort_parallel()
     end if
 

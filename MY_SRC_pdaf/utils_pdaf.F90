@@ -156,7 +156,7 @@ contains
          only: mype_ens
     use assimilation_pdaf, &
          only: filtertype, subtype, type_trans, type_sqrt, &
-         locweight, screen, dim_ens, ensscale, delt_obs, &
+         locweight, screen, ensscale, delt_obs, &
          type_forget, forget, type_ens_init, type_central_state, &
          ens_restart, type_hyb, hyb_gamma, hyb_kappa, use_global_obs
     use io_pdaf, &
@@ -186,13 +186,13 @@ contains
     use obs_sst_cmems_pdafomi, &
          only: assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
-         varname_sst_cmems
+         varname_sst_cmems, omit_sst_cmems
 
     !< Namelist file
     character(lc) :: nmlfile
 #if defined PDAF_OFFLINE
     ! Declare variables which are included from asminc_pdaf for online-coupling
-    logical :: do_asmiau, do_bgciau
+    logical :: do_asmiau
     integer :: steps_asmiau, shape_asmiau, iter_divdmp
 #if defined key_top
     logical :: do_bgciau
@@ -234,7 +234,7 @@ contains
     namelist /obs_sst_cmems_nml/ &
          assim_sst_cmems, path_sst_cmems, file_sst_cmems, rms_obs_sst_cmems, &
          lradius_sst_cmems, sradius_sst_cmems, mode_sst_cmems, dist_sst_cmems, &
-         varname_sst_cmems
+         varname_sst_cmems, omit_sst_cmems
 
 
     ! ****************************************************
@@ -336,6 +336,8 @@ contains
           write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','sradius_sst_cmems      ', sradius_sst_cmems
           write (*, '(a,5x,a,i10)') 'NEMO-PDAF','mode_sst_cmems      ', mode_sst_cmems
           write (*, '(a,5x,a,8x,a)') 'NEMO-PDAF','dist_sst_cmems      ', dist_sst_cmems
+          if (omit_sst_cmems > 0.0) &
+               write (*, '(a,5x,a,es12.4)') 'NEMO-PDAF','omit_sst_cmems      ', omit_sst_cmems
        end if
        write (*, '(a,1x,a/)') 'NEMO-PDAF','-- End of PDAF configuration overview --'
 
@@ -355,6 +357,8 @@ contains
 !!
   subroutine finalize_pdaf()
 
+    use PDAF, &
+         only: PDAF_print_info, PDAF_deallocate
     use parallel_pdaf, &
          only: mype_ens, npes_ens, comm_ensemble, mpierr
 #ifndef PDAF_OFFLINE
