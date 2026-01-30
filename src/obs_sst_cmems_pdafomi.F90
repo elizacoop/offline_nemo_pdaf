@@ -1,5 +1,5 @@
 !$Id: obs_TYPE_pdafomi_TEMPLATE.F90 579 2020-11-23 07:32:00Z lnerger $
-!> PDAF-OMI template observation module 
+!> PDAF-OMI template observation module
 !!
 !! This module handles operations for one data type (called 'module-type' below).
 !!
@@ -32,7 +32,7 @@ module obs_sst_cmems_pdafomi
        only: mype_filter    ! Rank of filter process
   use PDAF, &
        only: obs_f, obs_l   ! Declaration of observation data types
- 
+
   implicit none
   save
 
@@ -42,12 +42,12 @@ module obs_sst_cmems_pdafomi
   real(pwp) :: lradius_sst_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_sst_cmems = 1.0  !< Support radius for weight function
   real(pwp) :: omit_sst_cmems = 0.0     !< Omit obseratiob if deviation is too large
-  integer :: mode_sst_cmems = 0         !< Observation mode: 
+  integer :: mode_sst_cmems = 0         !< Observation mode:
                                         !< (0) linear interpolation
                                         !< (1) super-obbing: average 4 observation values
   integer :: time_sst_cmems = 0         !< Time at which the daily observations are assimilated
                                         !< (0) mightnight, (12) noon
-  character(len=3) :: dist_sst_cmems = 'geo'  ! Type of distance computation: 
+  character(len=3) :: dist_sst_cmems = 'geo'  ! Type of distance computation:
                                         !< (gp) for Cartesian distance in unit of grid points
                                         !< (geo) for geographic distance in km
                                         !<  Note: The implementation assumes a regular lat/lon grid
@@ -75,13 +75,13 @@ contains
 !> Initialize information on the module-type observation
 !!
 !! The routine is called by each filter process.
-!! at the beginning of the analysis step before 
+!! at the beginning of the analysis step before
 !! the loop through all local analysis domains.
-!! 
+!!
 !! It has to count the number of observations of the
 !! observation type handled in this module according
-!! to the current time step for all observations 
-!! required for the analyses in the loop over all local 
+!! to the current time step for all observations
+!! required for the analyses in the loop over all local
 !! analysis domains on the PE-local state domain.
 !!
 !! The following four variables have to be initialized in this routine
@@ -131,18 +131,18 @@ contains
     integer :: dim_obs_p                     ! Number of process-local observations
     real(pwp), allocatable :: obs_p(:)       ! PE-local observation vector
     real(pwp), allocatable :: ivar_obs_p(:)  ! PE-local inverse observation error variance
-    real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates 
+    real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates
     logical :: doassim_now=.true.            ! Whether we assimilate the observation at the current time
     character(len=100) :: file_full          ! filename including path
     integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
     integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
     integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
-    integer(4), allocatable :: obs_from_file(:,:)        ! observation field read from file 
+    integer(4), allocatable :: obs_from_file(:,:)        ! observation field read from file
     real(pwp), allocatable :: lon_obs(:), lat_obs(:)     ! Obs. coordinates read from file
     real(pwp), allocatable :: lon_model(:), lat_model(:) ! Longitude/latitude of model in radians
     integer :: iderr                         ! Error flag for determining indices
     integer(4) :: ido_n, ido_e, ido_s, ido_w ! Obs. ID limits N/E/S/W for model grid
-    integer :: idm_n, idm_e, idm_s, idm_w    ! Model ID limits NESW 
+    integer :: idm_n, idm_e, idm_s, idm_w    ! Model ID limits NESW
     real(pwp) :: wlonM, elonM, nlatM, slatM  ! Coordinate limits of model grid
     real(pwp) :: dlonM, dlatM                ! Model grid spacing
     real(pwp) :: dlonO, dlatO                ! Observation grid spacing
@@ -155,7 +155,7 @@ contains
     integer :: sgn_olat                      ! Orientation of latitude Obs.: -1 for north-south/+1 for south-north
     integer :: sgn_mlat                      ! Orientation of latitude Model: -1 for north-south/+1 for south-north
     real(pwp) :: rdate                       ! Current date
-    integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file) 
+    integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file)
     integer :: id_obs                        ! Index of observation field in state vector
     character(lc) :: varname_lon             ! Name of longitude coordinate variable in file
     character(lc) :: varname_lat             ! Name of latitude coordinate variable in file
@@ -229,17 +229,17 @@ contains
        ! Only execute this if we assimilate observations at this hour
 
        ! The SST data can can be downloaded as follows:
-       ! python -m motuclient --motu https://nrt.cmems-du.eu/motu-web/Motu 
-       !    --service-id SST_EUR_SST_L3S_NRT_OBSERVATIONS_010_009_a-TDS 
-       !    --product-id METEOFRANCE-EUR-SST_L3MULTISENSOR_NRT-OBS_FULL_TIME_SERIE 
-       !    --longitude-min -4.5 --longitude-max 30.5 --latitude-min 48.5 --latitude-max 66 
-       !    --date-min "2018-10-01 00:00:00" --date-max "2018-10-31 00:00:00" 
-       !    --variable adjusted_sea_surface_temperature 
+       ! python -m motuclient --motu https://nrt.cmems-du.eu/motu-web/Motu
+       !    --service-id SST_EUR_SST_L3S_NRT_OBSERVATIONS_010_009_a-TDS
+       !    --product-id METEOFRANCE-EUR-SST_L3MULTISENSOR_NRT-OBS_FULL_TIME_SERIE
+       !    --longitude-min -4.5 --longitude-max 30.5 --latitude-min 48.5 --latitude-max 66
+       !    --date-min "2018-10-01 00:00:00" --date-max "2018-10-31 00:00:00"
+       !    --variable adjusted_sea_surface_temperature
        !    --out-name sst_multi_201810.nc --user <USERNAME> --pwd <PASSWD>
 
        ! read observation values and their coordinates
 
-       if (mype_filter==0) then 
+       if (mype_filter==0) then
           write (*,'(a, 4x,a,i3,a)') 'NEMO-PDAF', 'Read observations for day ', &
                iday,' from file:'
           write (*,'(a, 4x,a)') 'NEMO-PDAF', trim(file_full)
@@ -282,7 +282,7 @@ contains
 
        ! Note: The implementated coordinate handling to find grid points
        ! neighboring an observation assumes a regular lat/lon grid
-  
+
        ! *** Convert observation coordinates to radians ***
        lon_obs = lon_obs * deg2rad
        lat_obs = lat_obs * deg2rad
@@ -365,7 +365,7 @@ contains
        ! boundaries and spacing for model grid
        nlatM = lat_model(idm_n)             ! Northern latitude limit of the grid box
        slatM = lat_model(idm_s)             ! Southern latitude limit of the grid box
-       wlonM = lon_model(idm_w)             ! Western longitude limit of the grid box 
+       wlonM = lon_model(idm_w)             ! Western longitude limit of the grid box
        elonM = lon_model(idm_e)             ! Eastern longitude limit of the grid box
        dlatM = lat_model(2) - lat_model(1)  ! Model grid spacing in latitude
        dlonM = lon_model(2) - lon_model(1)  ! Model grid spacing in longitude
@@ -393,7 +393,7 @@ contains
        ! Initialize error flag
        iderr = 0
 
-       ! Compute obs. coordinate indices for model grid limits 
+       ! Compute obs. coordinate indices for model grid limits
        ! If needed adapt index limits for model grid
        ido_w = ceiling(abs(wlonM - lon_obs(1)) / dlonO)+1
 
@@ -458,7 +458,7 @@ contains
           end if
        else
           ido_n = ceiling((nlatM - lat_obs(1)) / dlatO)+1
-          if (ido_n<2) then 
+          if (ido_n<2) then
              if (debug) write (*,*) 'NEMO-PDAF ', 'reset ido_n'
              ido_n = 2
              idm_n = floor((lat_obs(ido_n) - nlatM) / dlatM) + 1
@@ -604,13 +604,13 @@ contains
                 ! Model grid point coordinates
                 latM = lat_model(j)
                 lonM = lon_model(i)
-             
+
                 ! Compute observation grid point indices
                 ido_w = ceiling(abs(lonM - lon_obs(1)) / dlonO)
                 ido_e = ceiling(abs(lonM - lon_obs(1)) / dlonO)+1
                 ido_n = ceiling(abs(latM - lat_obs(1)) / dlatO)+1
                 ido_s = ceiling(abs(latM - lat_obs(1)) / dlatO)
-             
+
                 ! For wet grid points: Check whether there are valid
                 ! observations at the observation grid points around the point
                 if (idx_nwet(i, j)>0.0) then
@@ -646,7 +646,7 @@ contains
 
        ! Set observation dimension
        dim_obs_p = cnt
-       dim_obs = cnt 
+       dim_obs = cnt
 
        if (npes_filter==1) then
           write (6,'(a, 4x, a, a, a, i7)') 'NEMO-PDAF', '--- number of observations from ', trim(obsname), ': ', dim_obs
@@ -732,7 +732,7 @@ contains
                       ! *** Determine interpolation coefficients ***
 
                       ! Determine coordinates of grid points around observation
-                      ! Order of coefficients:  (3) ---- (4)          
+                      ! Order of coefficients:  (3) ---- (4)
                       !                          |        |
                       !                         (1) ---- (2)
                       ! Only 4 coordinate values are required for bi-linear interpolation
@@ -765,13 +765,13 @@ contains
                 ! Model grid point coordinates
                 latM = lat_model(j)
                 lonM = lon_model(i)
-             
+
                 ! Compute observation grid point indices
                 ido_w = ceiling(abs(lonM - lon_obs(1)) / dlonO)
                 ido_e = ceiling(abs(lonM - lon_obs(1)) / dlonO)+1
                 ido_n = ceiling(abs(latM - lat_obs(1)) / dlatO)+1
                 ido_s = ceiling(abs(latM - lat_obs(1)) / dlatO)
-             
+
                 ! For wet grid points: Check whether there are valid
                 ! observations at the observation grid points around the point
                 wetpointB: if (idx_nwet(i, j)>0) then
@@ -787,7 +787,7 @@ contains
 
                       cnt = cnt+1
 
-                      ! Set index of grid point 
+                      ! Set index of grid point
                       if (use_wet_state==1 .or. use_wet_state==2) then
                          thisobs%id_obs_p(1, cnt) = idx_nwet(i, j) + sfields(id_obs)%off
                       else
@@ -808,7 +808,7 @@ contains
                            obs_sum = obs_sum + obs_from_file(ido_w,ido_n)
                       if (obs_from_file(ido_e,ido_n) > missing_value) &
                            obs_sum = obs_sum + obs_from_file(ido_e,ido_n)
-                      obs_p(cnt) = real(obs_sum) / real(obsflag) * sst_scale 
+                      obs_p(cnt) = real(obs_sum) / real(obsflag) * sst_scale
 
                    end if obsflg
 
@@ -845,7 +845,7 @@ contains
 ! *** Gather global observation arrays ***
 ! ****************************************
 
-    ! This routine is generic for the case that only the observations, 
+    ! This routine is generic for the case that only the observations,
     ! inverse variances and observation coordinates are gathered
 
     call PDAFomi_gather_obs(thisobs, dim_obs_p, obs_p, ivar_obs_p, ocoord_p, &
@@ -876,13 +876,13 @@ contains
 
 
 !-------------------------------------------------------------------------------
-!> Implementation of observation operator 
+!> Implementation of observation operator
 !!
 !! This routine applies the full observation operator
 !! for the type of observations handled in this module.
 !!
 !! One can choose a proper observation operator from
-!! PDAFOMI_OBS_OP or add one to that module or 
+!! PDAFOMI_OBS_OP or add one to that module or
 !! implement another observation operator here.
 !!
 !! The routine is called by all filter processes.
@@ -907,7 +907,7 @@ contains
 ! ******************************************************
 
     if (thisobs%doassim==1) then
-    
+
        if (observation_mode==0) then
 
           ! Observation operator for averaging over grid points
@@ -1006,7 +1006,7 @@ contains
     use PDAF, only: PDAFomi_localize_covar
 
     ! Include localization radius and local coordinates
-    use assimilation_pdaf, &   
+    use assimilation_pdaf, &
          only: locweight
 
     implicit none
