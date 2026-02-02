@@ -16,20 +16,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
 
    use mod_kind_pdaf
-   use parallel_pdaf, &
-         only: mype_filter
-   use assimilation_pdaf, &
-         only: type_ens_init, type_central_state, ensscale, &
-         coupling_nemo
-   use io_pdaf, &
-         only: path_inistate, path_ens, file_ens, file_covar, &
-         read_state_mv, read_ens_mv_loop, read_ens_states, read_ens_mv_filelist
-   use statevector_pdaf, &
-         only: n_fields, sfields
-   use transforms_pdaf, &
-         only: transform_field_mv
-   use sample_ens_pdaf, &
-         only: sample_ens_from_covar
+   use parallel_pdaf, only: mype_filter
 
    implicit none
 
@@ -46,12 +33,8 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
    ! *** Local variables ***
    integer :: i, member              ! Counters
-   integer :: id_field               ! Id of field in state vector
-   real(pwp) :: ens_mean             ! Ensemble mean value
    real(pwp) :: inv_dim_ens          ! Inverse ensemble size
    integer :: verbose                ! Control verbosity
-   logical :: zeromean=.true.        ! Whether to set ensemble mean to zero
-
 
    ! ************************************
    ! *** Generate ensemble from files ***
@@ -60,8 +43,7 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
    if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from list of output files'
 
-   call read_ens_mv_filelist(1.0, zeromean, path_ens, dim_p, dim_ens, ens_p)
-
+!    call read_ens_mv_filelist(1.0, zeromean, path_ens, dim_p, dim_ens, ens_p)
 
    inv_dim_ens = 1.0_pwp/real(dim_ens, kind=pwp)
    ! Scale ensemble perturbations - either all using 'ensscale' or field-wise
@@ -74,16 +56,16 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
    end do
 
 
-   ! *** Transform fields
-   do member = 1 , dim_ens
+!    ! *** Transform fields
+!    do member = 1 , dim_ens
 
-      if (mype_filter==0 .and. member==1) then
-         verbose = 1
-      else
-         verbose = 0
-      end if
+!       if (mype_filter==0 .and. member==1) then
+!          verbose = 1
+!       else
+!          verbose = 0
+!       end if
 
-      call transform_field_mv(1, ens_p(:,member), 11, verbose)
-   end do
+!       ! call transform_field_mv(1, ens_p(:,member), 11, verbose)
+!    end do
 
 end subroutine init_ens_pdaf

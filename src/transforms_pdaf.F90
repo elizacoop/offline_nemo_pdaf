@@ -11,10 +11,8 @@ module transforms_pdaf
   use mod_kind_pdaf
   use nemo_pdaf, &
        only: nlvls=>jpk, nj_p, ni_p, nwet, wet_pts, use_wet_state, i0, j0
-  use statevector_pdaf, &
-       only: id, sfields, n_fields
-  use parallel_pdaf, &
-       only: mype=>mype_model, task_id
+  use statevector_pdaf, only: sfields, n_fields
+  use parallel_pdaf, only: mype=>mype_model, task_id
 
   implicit none
   save
@@ -23,14 +21,14 @@ module transforms_pdaf
     module procedure field2state_missval_2d
     module procedure field2state_missval_3d
     module procedure field2state_missval_4d
-  end interface 
+  end interface
 
   interface field2state
     module procedure field2state_2d
     module procedure field2state_3d
     module procedure field2state_4d
-  end interface 
-  
+  end interface
+
   interface state2field
     module procedure state2field_2d
     module procedure state2field_3d
@@ -78,7 +76,7 @@ contains
 ! *** Initialize state vector from model field ***
 
     if (use_wet_state==1) then
-       
+
        do k = 1, n_levels
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -158,7 +156,7 @@ contains
 ! *** Initialize state vector from model field ***
 
     if (use_wet_state==1) then
-       
+
        do k = 1, n_levels
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -269,7 +267,7 @@ contains
 ! *** Initialize state vector from model field ***
 
     if (use_wet_state==1) then
-       
+
        do k = 1, n_levels
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -310,7 +308,7 @@ contains
        do k = 1, n_levels
           do j = 1,nj_p
              do i = 1, ni_p
-                if (abs(field(i,j,k,1)- missval) > 0.1_pwp) then 
+                if (abs(field(i,j,k,1)- missval) > 0.1_pwp) then
                    state(cnt) = field(i,j,k,1)
                 else
                    state(cnt) = 0.0_pwp
@@ -354,7 +352,7 @@ contains
 ! *** Initialize state vector from model field ***
 
     if (use_wet_state==1) then
-       
+
        do k = 1, n_levels
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -388,7 +386,7 @@ contains
        do k = 1, n_levels
           do j = 1,nj_p
              do i = 1, ni_p
-                if (abs(field(i,j,k)- missval) > 0.1_pwp) then 
+                if (abs(field(i,j,k)- missval) > 0.1_pwp) then
                    state(cnt) = field(i,j,k)
                 else
                    state(cnt) = 0.0_pwp
@@ -430,7 +428,7 @@ contains
        cnt = 1 + offset
        do j = 1,nj_p
           do i = 1, ni_p
-             if (abs(field(i,j)- missval) > 0.1_pwp) then 
+             if (abs(field(i,j)- missval) > 0.1_pwp) then
                 state(cnt) = field(i,j)
              else
                 state(cnt) = 0.0_pwp
@@ -473,7 +471,7 @@ contains
 ! *** Initialize model field from state vector
 
     if (use_wet_state==1) then
-       
+
        do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -554,7 +552,7 @@ contains
 ! *** Initialize model field from state vector
 
     if (use_wet_state==1) then
-       
+
        do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -637,7 +635,7 @@ contains
 ! *** Initialize model field from state vector
 
     if (use_wet_state==1) then
-       
+
        do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -719,7 +717,7 @@ contains
 ! *** Initialize model field from state vector
 
     if (use_wet_state==1) then
-       
+
        do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -800,7 +798,7 @@ contains
 ! *** Initialize model field from state vector
 
     if (use_wet_state==1) then
-       
+
        do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -916,7 +914,7 @@ contains
 ! *** Initialize model field from state vector
 
     if (use_wet_state==1) then
-       
+
        do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
           do i = 1, nwet
@@ -1077,7 +1075,7 @@ contains
     integer,   intent(in)    :: type     !< Direction of transformation
     real(pwp), intent(inout) :: state(:) !< State vector
     integer,   intent(in)    :: limits   !< Whether to also apply limits
-             !< (0) no limits applied, 
+             !< (0) no limits applied,
              !< (11) limits applied to original variable for type 1
              !< (12) limits applied to transformed variable for type 1
              !< (21) limits applied to original variable for type 2
@@ -1126,7 +1124,7 @@ contains
        min_limit = sfields(i)%min_limit
        max_limit = sfields(i)%max_limit
 
-       
+
        ! *** Transformations
        if (type==1) then
           ! Transformation from NEMO value to transformed value
@@ -1145,8 +1143,8 @@ contains
              cnt=0
              cnt2=0
 
-             do j = off+1, off+dim 
-                if (state(j)>0.0_pwp) then 
+             do j = off+1, off+dim
+                if (state(j)>0.0_pwp) then
                    state(j) = log(state(j) + shift)
                    cnt2 = cnt2+1
                 else
@@ -1179,10 +1177,10 @@ contains
                   'NEMO-PDAF', '--- revert ln transformation of ', trim(var)
              cnt=0
              cnt2=0
-             do j = off+1, off+dim 
-                if (state(j)>-30.0_pwp) then 
+             do j = off+1, off+dim
+                if (state(j)>-30.0_pwp) then
                    cnt2 = cnt2+1
-                   state(j) = exp(state(j))-shift 
+                   state(j) = exp(state(j))-shift
                 else
                    state(j) = 0.0_pwp
                    cnt = cnt + 1

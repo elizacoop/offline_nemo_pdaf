@@ -50,15 +50,10 @@ contains
    !-------------------------------------------------------------------------------
    !> Initialize MPI communicators for PDAF
    !!
-   !! Split the MPI communicator initialised by XIOS into MODEL,
-   !! FILTER and COUPLE communicators, return MODEL communicator.
-   !!
    subroutine init_parallel_pdaf(screen)
       use PDAF, only: PDAF3_set_parallel
       use timer, only: timeit
 
-      !> Communicator after XIOS splitting
-      integer, intent(inout) :: mpi_comm
       integer, intent(in) :: screen
 
       integer :: i, j                   !< Counters
@@ -183,13 +178,6 @@ contains
          if (mype_ens == 0) write (*, '(/a)') ''
 
       end if
-
-      ! ****************************************************
-      ! *** Re-initialize model equivalent to COMM_model ***
-      ! ****************************************************
-
-      mpi_comm = COMM_model
-
       ! *****************************************************
       ! *** Set communicator within which PDAF operates.  ***
       ! *****************************************************

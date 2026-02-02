@@ -6,32 +6,29 @@
 !! ssh observations available on the model grid. The observation module
 !! also allows to perform a twin experiment in which model output
 !! is read and used as observations after adding noise to the values.
-!! 
+!!
 !! The routines are called by the different call-back routines of PDAF.
-!! 
+!!
 !! The module uses two derived data type (obs_f and obs_l), which contain
 !! all information about the full and local observations. Only variables
 !! of the type obs_f need to be initialized in this module. The variables
 !! in the type obs_l are initialized by the generic routines from `PDAFomi`.
 !!
 !! Author: Nicholas Byrne, NCEO & University of Reading, UK
-!! 
+!!
 module obs_ssh_mgrid_pdafomi
-
    use mod_kind_pdaf
-   use parallel_pdaf, &
-      only: mype_filter, abort_parallel
-   use PDAF, &
-      only: obs_f, obs_l
-   use nemo_pdaf, &
-        only: i0, j0, istart, jstart
+   use parallel_pdaf, only: mype_filter, abort_parallel
+   use PDAF, only: obs_f, obs_l
+   use nemo_pdaf, only: i0, j0
    use netcdf
-
    implicit none
    save
 
    !> Whether to assimilate this data type
    logical :: assim_ssh_mgrid = .false.
+   !< (1) use global obs.; (0) use domain-reduced full obs.
+   integer :: use_global_obs_ssh_mgrid = 1
    !> Observation error standard deviation (for constant errors)
    real(pwp) :: rms_ssh_mgrid = 0.1 !1
    !> Localization cut-off radius
@@ -90,16 +87,11 @@ contains
    !!
    subroutine init_dim_obs_ssh_mgrid(step, dim_obs)
 
-      use PDAF, &
-         only: PDAFomi_gather_obs
-      use assimilation_pdaf, &
-         only: filtertype, delt_obs, use_global_obs
-      use statevector_pdaf, &
-           only: id, sfields
-      use io_pdaf, &
-           only: check
-      use nemo_pdaf, &
-         only: ni_p, nj_p, jpiglo, jpjglo, glamt, gphit, ndastp
+      use PDAF, only: PDAFomi_gather_obs
+      use assimilation_pdaf, only: filtertype
+      use statevector_pdaf, only: id, sfields
+      use io_pdaf, only: check
+      use nemo_pdaf, only: ni_p, nj_p, jpiglo, jpjglo, glamt, gphit, ndastp
 
       integer, intent(in)    :: step    !< Current time step
       integer, intent(inout) :: dim_obs !< Dimension of full observation vector
@@ -117,7 +109,6 @@ contains
       real(pwp), allocatable :: ivar_obs_p(:)  !> PE-local inverse observation error variance
       real(pwp), allocatable :: ocoord_p(:, :) !> PE-local observation coordinates
       real(pwp) :: rad_conv = 3.141592653589793/180.0 !> Degree to radian conversion
-
 
       ! *****************************
       ! *** Global setting config ***
@@ -138,7 +129,7 @@ contains
       thisobs%ncoord = 2
 
       ! SEt to use limited full observations
-      thisobs%use_global_obs = use_global_obs
+      thisobs%use_global_obs = use_global_obs_ssh_mgrid
 
       ! **********************************
       ! *** Read PE-local observations ***
@@ -157,10 +148,9 @@ contains
 
       allocate (obs(jpiglo, jpjglo, 1))
       ! Increment time in NetCDF file so correct obs read
-      nc_step = nc_step + delt_obs
 
       nc_step = 40
-if (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_step, 'is hard-coded'
+      if (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_step, 'is hard-coded'
 
       pos = (/1, 1, nc_step/)
       cnt = (/jpiglo, jpjglo, 1/)
@@ -209,8 +199,8 @@ if (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
                cnt0_p = cnt0_p + 1
 
                ! Convert to global coordinates.
-               i_obs = istart + i - 1
-               j_obs = jstart + j - 1
+               i_obs = i0 + i - 1
+               j_obs = j0 + j - 1
 
                cnt_p = cnt_p + 1
                obs_p(cnt_p) = obs(i_obs, j_obs, 1)
@@ -314,10 +304,8 @@ if (mype_filter == 0) write (*,*) 'NEMO-PDAF:    Warning: reading step ', nc_ste
    !>
    subroutine init_dim_obs_l_ssh_mgrid(domain_p, step, dim_obs, dim_obs_l)
 
-      use PDAF, &
-         only: PDAFomi_init_dim_obs_l
-      use assimilation_pdaf, &
-         only: domain_coords, locweight
+      use PDAF, only: PDAFomi_init_dim_obs_l
+      use assimilation_pdaf, only: domain_coords, locweight
 
       !> Index of current local analysis domain
       integer, intent(in)  :: domain_p

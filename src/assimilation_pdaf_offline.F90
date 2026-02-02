@@ -11,35 +11,22 @@ module assimilation_pdaf
 
    implicit none
    save
-
-   !< Type of coupling between NEMO and PDAF
-   !< offline: 'rest', 'incr', 'ieoi'
-   character(len=4)   :: coupling_nemo = 'ieoi'
-   ! *** Model- and data specific variables ***
-   integer :: dim_state     !< Global model state dimension
-   integer :: dim_state_p   !< Model state dimension for PE-local domain
+   ! *** Below are the generic variables used for configuring PDAF ***
    ! Settings for time stepping - available as namelist read-in
    !< initial time step of assimilation
    integer :: step_null = 0
-   ! *** Below are the generic variables used for configuring PDAF ***
-   ! *** Their values are set in init_PDAF                         ***
-   ! Settings for observations - available as command line options
-   integer :: delt_obs         !< time step interval between assimilation steps
-   !< (1) use global obs.; (0) use domain-reduced full obs.
-   integer :: use_global_obs = 1
-
    ! General control of PDAF - available as command line options
-   integer :: screen       !< Control verbosity of PDAF
+   integer :: screen = 2       !< Control verbosity of PDAF
                            !< * (0) no outputs
                            !< * (1) progress info
                            !< * (2) add timings
                            !< * (3) debugging output
    integer :: dim_ens      !< Size of ensemble
-   integer :: filtertype   !< Select filter algorithm:
+   integer :: filtertype = 7   !< Select filter algorithm:
                            !<   * SEEK (0), SEIK (1), EnKF (2), LSEIK (3), ETKF (4)
                            !<   LETKF (5), ESTKF (6), LESTKF (7), NETF (9), LNETF (10)
                            !<   PF (12), GENOBS (100), 3DVAR (200)
-   integer :: subtype      !< Subtype of filter algorithm
+   integer :: subtype = 0      !< Subtype of filter algorithm
                            !<   * SEEK:
                            !<     (0) evolve normalized modes
                            !<     (1) evolve scaled modes with unit U
@@ -89,15 +76,11 @@ module assimilation_pdaf
                            !<     (4) 3D Ensemble Var using ESTKF for ensemble update
                            !<     (6) hybrid 3D-Var using LESTKF for ensemble update
                            !<     (7) hybrid 3D-Var using ESTKF for ensemble update
-   integer :: incremental  !< Perform incremental updating in LSEIK
-   integer :: dim_lag      !< Number of time instances for smoother
 
    ! Filter settings - available as command line options
    !    ! General
-   integer   :: type_forget  !< Type of forgetting factor
-   real(pwp) :: forget       !< Forgetting factor for filter analysis
-   integer   :: dim_bias     !< dimension of bias vector
-
+   integer   :: type_forget = 0  !< Type of forgetting factor
+   real(pwp) :: forget = 1.0       !< Forgetting factor for filter analysis
    !    ! ENKF
    integer   :: rank_analysis_enkf  !< Rank to be considered for inversion of HPH
 
@@ -122,70 +105,90 @@ module assimilation_pdaf
                               !< (1) use identity transformation
 
    !    ! LSEIK/LETKF/LESTKF/LNETF
-   integer :: locweight     !< Type of localizing weighting of observations
+   integer :: locweight = 0     !< Type of localizing weighting of observations
                      !<   * (0) constant weight of 1
                      !<   * (1) exponentially decreasing with SRANGE
                      !<   * (2) use 5th-order polynomial
                      !<   * (3) regulated localization of R with mean error variance
                      !<   * (4) regulated localization of R with single-point error variance
    !    ! SEIK-subtype4/LSEIK-subtype4/ESTKF/LESTKF
-   integer :: type_sqrt     !< Type of the transform matrix square-root
+   integer :: type_sqrt = 0     !< Type of the transform matrix square-root
                      !<   * (0) symmetric square root
                      !<   * (1) Cholesky decomposition
 
+   namelist /pdaf_nml/ screen, dim_ens, filtertype, subtype, &
+                     type_trans, type_sqrt, &
+                     type_forget, forget, locweight
 
    !< Indices of local state vector in global vector
    integer, allocatable :: id_lstate_in_pstate(:)
    !< Coordinates of local analysis domain
    real(pwp) :: domain_coords(2)
 
-
 !$OMP THREADPRIVATE(domain_coords, id_lstate_in_pstate)
 
 contains
+   !> Print Assimilation Configuration
+   !! This routine prints the assimilation configuration
+   !! to the standard output.
+   SUBROUTINE print_pdaf_configuration()
+      use parallel_pdaf, only: mype_ens
+      implicit none
+      ! *** Local variables ***
+      integer :: i
+      ! *** Print configuration ***
+      if (mype_ens == 0) then
+         write (*, '(a,3x,a)') 'NEMO-PDAF','[pdaf_nml]:'
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','screen       ', screen
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','filtertype   ', filtertype
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','subtype      ', subtype
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_trans   ', type_trans
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_sqrt    ', type_sqrt
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_forget  ', type_forget
+         write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
+         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
+
+      end if
+   end SUBROUTINE print_pdaf_configuration
+
    !> Performing the Assimilation Step
    !!
    !! This routine is called to perform the analysis step in
    !! offline mode.
    !!
-   subroutine assimilate_pdaf()
-      use PDAF, only: PDAF3_assim_offline
-      use parallel_pdaf, only: mype_ens, abort_parallel
-      implicit none
-      ! *** Local variables ***
-      integer :: status_pdaf         ! PDAF status flag
-      ! *** External subroutines ***
-      ! Interface between model and PDAF, and prepoststep
-      external :: collect_state_pdaf, &  ! Collect a state vector from model fields
-                  prepoststep_pdaf       ! User supplied pre/poststep routine
+   ! subroutine assimilate_pdaf()
+   !    use PDAF, only: PDAF3_assim_offline
+   !    use parallel_pdaf, only: mype_ens, abort_parallel
+   !    implicit none
+   !    ! *** Local variables ***
+   !    integer :: status_pdaf         ! PDAF status flag
+   !    ! *** External subroutines ***
+   !    ! Interface for prepoststep
+   !    external :: prepoststep_pdaf       ! User supplied pre/poststep routine
+   !    ! Localization of state vector
+   !    external :: init_n_domains_pdaf, & ! Provide number of local analysis domains
+   !                init_dim_l_pdaf        ! Initialize state dimension for local analysis domain
+   !    ! Interface to PDAF-OMI for local and global filters
+   !    external :: &
+   !          init_dim_obs_pdafomi, &       ! Get dimension of full obs. vector for PE-local domain
+   !          obs_op_pdafomi, &             ! Obs. operator for full obs. vector for PE-local domain
+   !          init_dim_obs_l_pdafomi        ! Get dimension of obs. vector for local analysis domain
 
-      ! Localization of state vector
-      external :: init_n_domains_pdaf, & ! Provide number of local analysis domains
-            init_dim_l_pdaf, &            ! Initialize state dimension for local analysis domain
-            g2l_state_pdaf, &             ! Get state on local analysis domain from global state
-            l2g_state_pdaf                ! Update global state from state on local analysis domain
+   !    ! *********************************
+   !    ! *** Call assimilation routine ***
+   !    ! *********************************
+   !    call PDAF3_assim_offline(init_dim_obs_pdafomi, obs_op_pdafomi, &
+   !          init_n_domains_pdaf, init_dim_l_pdaf, init_dim_obs_l_pdafomi, &
+   !          prepoststep_pdaf, status_pdaf)
 
-      ! Interface to PDAF-OMI for local and global filters
-      external :: &
-            init_dim_obs_pdafomi, &       ! Get dimension of full obs. vector for PE-local domain
-            obs_op_pdafomi, &             ! Obs. operator for full obs. vector for PE-local domain
-            init_dim_obs_l_pdafomi        ! Get dimension of obs. vector for local analysis domain
+   !    ! Check for errors during execution of PDAF
+   !    if (status_pdaf /= 0) then
+   !       write (*, '(/1x,a6,i3,a43,i4,a1/)') &
+   !             'ERROR ', status_pdaf, &
+   !             ' in PDAF3_assimilate - stopping! (PE ', mype_ens, ')'
+   !       call abort_parallel()
+   !    end if
 
-      ! *********************************
-      ! *** Call assimilation routine ***
-      ! *********************************
-      call PDAF3_assim_offline(init_dim_obs_pdafomi, obs_op_pdafomi, &
-            init_n_domains_pdaf, init_dim_l_pdaf, init_dim_obs_l_pdafomi, &
-            prepoststep_pdaf, status_pdaf)
-
-      ! Check for errors during execution of PDAF
-      if (status_pdaf /= 0) then
-         write (*, '(/1x,a6,i3,a43,i4,a1/)') &
-               'ERROR ', status_pdaf, &
-               ' in PDAF3_assimilate - stopping! (PE ', mype_ens, ')'
-         call abort_parallel()
-      end if
-
-   end subroutine assimilate_pdaf
+   ! end subroutine assimilate_pdaf
 
 end module assimilation_pdaf

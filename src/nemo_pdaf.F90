@@ -15,23 +15,17 @@ module nemo_pdaf
    use mod_kind_pdaf
    implicit none
 
-   ! *** NEMO model variables - they used in the offline mode
+   ! *** NEMO domain variables ***
    integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
 
    real(pwp), allocatable :: glamt(:,:), glamu(:,:), glamv(:,:)       ! Longitudes
    real(pwp), allocatable :: gphit(:,:), gphiu(:,:), gphiv(:,:)       ! Latitudes
    real(pwp), allocatable :: gdept_1d(:)      ! Depths
+   real(pwp), allocatable :: nav_lon(:,:), nav_lat(:,:)   ! Restart file grid
    real(pwp), allocatable :: tmask(:,:,:)     ! Temperature mask array
-   integer :: ndastp
 
-#if defined key_top
-   type tracer
-      character(len=lc) :: clsname
-      character(len=lc) :: clunit
-   end type tracer
-
-   type(tracer), allocatable :: sn_tracer(:)
-#endif
+   ! *** NEMO model variables - time stepping
+   integer                :: ndastp
 
    ! *** Other grid variables
    real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
@@ -44,6 +38,9 @@ module nemo_pdaf
                                             ! (1) latitude, (2) langitude,
                                             ! (3) number wet layers at given latlon
                                             ! (4) index in 2d grid box
+                                            ! (5) starting index in all wet points for vertical column
+                                            ! (6) local longitude index in subdomain
+                                            ! (7) local latitude index in subdomain
    integer, allocatable :: idx_wet_2d(:,:)  ! Index array for wet_pts row index in 2d box
    integer, allocatable :: idx_nwet(:,:)    ! Index array for wet_pts row index in wet surface grid points
    integer, allocatable :: nlev_wet_2d(:,:) ! Number of wet layers for ij position in 2d box
@@ -62,7 +59,6 @@ module nemo_pdaf
 
 
 contains
-
    !> Initialize grid information for the DA
    !!
    !! This routine initializes grid information for the data assimilation
@@ -216,17 +212,10 @@ contains
       ! ******************************************************************
       ! *** Specify domain limits to limit observations to sub-domains ***
       ! ******************************************************************
-      if (type_limcoords==0) then
-         lim_coords(1,1) = glamt(1, 1) * deg2rad
-         lim_coords(1,2) = glamt(ni_p, 1) * deg2rad
-         lim_coords(2,1) = gphit(ni_p, nj_p) * deg2rad
-         lim_coords(2,2) = gphit(1, 1) * deg2rad
-      else
-         lim_coords(1,1) = minval(glamt(:, :)) * deg2rad
-         lim_coords(1,2) = maxval(glamt(:, :)) * deg2rad
-         lim_coords(2,1) = maxval(gphit(:, :)) * deg2rad
-         lim_coords(2,2) = minval(gphit(:, :)) * deg2rad
-      end if
+      lim_coords(1,1) = minval(glamt(:, :)) * deg2rad
+      lim_coords(1,2) = maxval(glamt(:, :)) * deg2rad
+      lim_coords(2,1) = maxval(gphit(:, :)) * deg2rad
+      lim_coords(2,2) = minval(gphit(:, :)) * deg2rad
 
       call PDAFomi_set_domain_limits(lim_coords)
 

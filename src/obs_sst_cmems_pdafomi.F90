@@ -38,6 +38,8 @@ module obs_sst_cmems_pdafomi
 
   ! Variables which are inputs to the module (usually set in init_pdaf)
   logical :: assim_sst_cmems = .false.  !< Whether to assimilate this data type
+   !< (1) use global obs.; (0) use domain-reduced full obs.
+   integer :: use_global_obs_sst_cmems = 1
   real(pwp) :: rms_obs_sst_cmems = 0.8  !< Observation error standard deviation (for constant errors)
   real(pwp) :: lradius_sst_cmems = 1.0  !< Localization cut-off radius
   real(pwp) :: sradius_sst_cmems = 1.0  !< Support radius for weight function
@@ -72,151 +74,144 @@ module obs_sst_cmems_pdafomi
 
 contains
 
-!> Initialize information on the module-type observation
-!!
-!! The routine is called by each filter process.
-!! at the beginning of the analysis step before
-!! the loop through all local analysis domains.
-!!
-!! It has to count the number of observations of the
-!! observation type handled in this module according
-!! to the current time step for all observations
-!! required for the analyses in the loop over all local
-!! analysis domains on the PE-local state domain.
-!!
-!! The following four variables have to be initialized in this routine
-!! * thisobs\%doassim     - Whether to assimilate this type of observations
-!! * thisobs\%disttype    - type of distance computation for localization with this observaton
-!! * thisobs\%ncoord      - number of coordinates used for distance computation
-!! * thisobs\%id_obs_p    - index of module-type observation in PE-local state vector
-!!
-!! Optional is the use of
-!! * thisobs\%icoeff_p    - Interpolation coefficients for obs. operator (only if interpolation is used)
-!! * thisobs\%domainsize  - Size of domain for periodicity for disttype=1 (<0 for no periodicity)
-!! * thisobs\%obs_err_type - Type of observation errors for particle filter and NETF (default: 0=Gaussian)
-!! * thisobs\%use_global obs - Whether to use global observations or restrict the observations to the relevant ones
-!!                          (default: 1=use global full observations)
-!!
-!! Further variables are set when the routine PDAFomi_gather_obs is called.
-!!
-  subroutine init_dim_obs_sst_cmems(step, dim_obs)
+   !> Initialize information on the module-type observation
+   !!
+   !! The routine is called by each filter process.
+   !! at the beginning of the analysis step before
+   !! the loop through all local analysis domains.
+   !!
+   !! It has to count the number of observations of the
+   !! observation type handled in this module according
+   !! to the current time step for all observations
+   !! required for the analyses in the loop over all local
+   !! analysis domains on the PE-local state domain.
+   !!
+   !! The following four variables have to be initialized in this routine
+   !! * thisobs\%doassim     - Whether to assimilate this type of observations
+   !! * thisobs\%disttype    - type of distance computation for localization with this observaton
+   !! * thisobs\%ncoord      - number of coordinates used for distance computation
+   !! * thisobs\%id_obs_p    - index of module-type observation in PE-local state vector
+   !!
+   !! Optional is the use of
+   !! * thisobs\%icoeff_p    - Interpolation coefficients for obs. operator (only if interpolation is used)
+   !! * thisobs\%domainsize  - Size of domain for periodicity for disttype=1 (<0 for no periodicity)
+   !! * thisobs\%obs_err_type - Type of observation errors for particle filter and NETF (default: 0=Gaussian)
+   !! * thisobs\%use_global obs - Whether to use global observations or restrict the observations to the relevant ones
+   !!                          (default: 1=use global full observations)
+   !!
+   !! Further variables are set when the routine PDAFomi_gather_obs is called.
+   !!
+   subroutine init_dim_obs_sst_cmems(step, dim_obs)
+      use netcdf
+      use PDAF, only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
+      use assimilation_pdaf, only: filtertype, screen
+      use statevector_pdaf, only: id, sfields
+      use parallel_pdaf,  only: mype_filter, npes_filter
+      use io_pdaf, only: check
+      use nemo_pdaf, only: nlats=>nj_p, nlons=>ni_p, &
+                           idx_nwet, use_wet_state, nlei, nlej, deg2rad
 
-    use netcdf
-    use PDAF, &
-         only: PDAFomi_gather_obs, PDAFomi_get_interp_coeff_lin
-    use assimilation_pdaf, &
-         only: filtertype, screen, use_global_obs
-    use statevector_pdaf, &
-         only: id, sfields
-    use parallel_pdaf, &
-         only: mype_filter, npes_filter
-    use io_pdaf, &
-         only: check
-    use nemo_pdaf, &
-         only: lat1_p, lon1_p, nlats=>nj_p, nlons=>ni_p, &
-         idx_nwet, use_wet_state, nlei, nlej, calc_date, deg2rad
+      implicit none
 
-    implicit none
+      ! *** Arguments ***
+      integer, intent(in)    :: step       !< Current time step
+      integer, intent(inout) :: dim_obs    !< Dimension of full observation vector
 
-! *** Arguments ***
-    integer, intent(in)    :: step       !< Current time step
-    integer, intent(inout) :: dim_obs    !< Dimension of full observation vector
-
-! *** Local variables ***
-    logical :: debug = .false.               ! Activate debugging output for index calculations
-    logical :: obsgrid_p = .true.            ! Flag whether the observation grid includes PE-local sub-domain
-    integer :: i, j, cnt                     ! Counters
-    integer :: ido_start, ido_end            ! Counters
-    integer :: idm_start, idm_end            ! Counters
-    integer :: dim_obs_p                     ! Number of process-local observations
-    real(pwp), allocatable :: obs_p(:)       ! PE-local observation vector
-    real(pwp), allocatable :: ivar_obs_p(:)  ! PE-local inverse observation error variance
-    real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates
-    logical :: doassim_now=.true.            ! Whether we assimilate the observation at the current time
-    character(len=100) :: file_full          ! filename including path
-    integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
-    integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
-    integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
-    integer(4), allocatable :: obs_from_file(:,:)        ! observation field read from file
-    real(pwp), allocatable :: lon_obs(:), lat_obs(:)     ! Obs. coordinates read from file
-    real(pwp), allocatable :: lon_model(:), lat_model(:) ! Longitude/latitude of model in radians
-    integer :: iderr                         ! Error flag for determining indices
-    integer(4) :: ido_n, ido_e, ido_s, ido_w ! Obs. ID limits N/E/S/W for model grid
-    integer :: idm_n, idm_e, idm_s, idm_w    ! Model ID limits NESW
-    real(pwp) :: wlonM, elonM, nlatM, slatM  ! Coordinate limits of model grid
-    real(pwp) :: dlonM, dlatM                ! Model grid spacing
-    real(pwp) :: dlonO, dlatO                ! Observation grid spacing
-    real(pwp) :: latM_limit                  ! Comparison limit in latitude for model coordinate
-    real(pwp) :: lonM, latM                  ! Longitude/latitude of a model grid point
-    real(pwp) :: gcoords(4,2)                ! Grid point coordinates for computing interpolation coeffs
-    integer(4) :: obsflag                    ! Count observation in direct vicinity
-    integer(4) :: cntobs(4)                  ! Count grid points with 0 to 4 obs. neighbours
-    integer(4) :: obs_sum                    ! Sum of observation integer values
-    integer :: sgn_olat                      ! Orientation of latitude Obs.: -1 for north-south/+1 for south-north
-    integer :: sgn_mlat                      ! Orientation of latitude Model: -1 for north-south/+1 for south-north
-    real(pwp) :: rdate                       ! Current date
-    integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file)
-    integer :: id_obs                        ! Index of observation field in state vector
-    character(lc) :: varname_lon             ! Name of longitude coordinate variable in file
-    character(lc) :: varname_lat             ! Name of latitude coordinate variable in file
-    character(lc) :: varname_obs             ! Name of observation variable in file
-    real(pwp) :: rms_obs                     ! Obs. error standard deviation
-    integer :: missing_value                 ! Missing value above which observations are valid
-    character(len=2) :: region               ! Region for which the data is used ('no', 'ba', 'nb')
-    real(pwp) :: limcoords(3)                ! Limiting coordinates according to region
-    real(pwp), parameter :: sst_scale = 0.01 ! Scaling factor to convert file value to degC
+      ! *** Local variables ***
+      logical :: debug = .false.               ! Activate debugging output for index calculations
+      logical :: obsgrid_p = .true.            ! Flag whether the observation grid includes PE-local sub-domain
+      integer :: i, j, cnt                     ! Counters
+      integer :: ido_start, ido_end            ! Counters
+      integer :: idm_start, idm_end            ! Counters
+      integer :: dim_obs_p                     ! Number of process-local observations
+      real(pwp), allocatable :: obs_p(:)       ! PE-local observation vector
+      real(pwp), allocatable :: ivar_obs_p(:)  ! PE-local inverse observation error variance
+      real(pwp), allocatable :: ocoord_p(:,:)  ! PE-local observation coordinates
+      logical :: doassim_now=.true.            ! Whether we assimilate the observation at the current time
+      character(len=100) :: file_full          ! filename including path
+      integer(4) :: ncid, dimid, lonid, latid, varid       ! nc file IDs
+      integer(4) :: startv(3), cntv(3)                     ! Index arrays for reading from nc file
+      integer(4) :: dim_olat, dim_olon                     ! Grid dimensions read from file
+      integer(4), allocatable :: obs_from_file(:,:)        ! observation field read from file
+      real(pwp), allocatable :: lon_obs(:), lat_obs(:)     ! Obs. coordinates read from file
+      real(pwp), allocatable :: lon_model(:), lat_model(:) ! Longitude/latitude of model in radians
+      integer :: iderr                         ! Error flag for determining indices
+      integer(4) :: ido_n, ido_e, ido_s, ido_w ! Obs. ID limits N/E/S/W for model grid
+      integer :: idm_n, idm_e, idm_s, idm_w    ! Model ID limits NESW
+      real(pwp) :: wlonM, elonM, nlatM, slatM  ! Coordinate limits of model grid
+      real(pwp) :: dlonM, dlatM                ! Model grid spacing
+      real(pwp) :: dlonO, dlatO                ! Observation grid spacing
+      real(pwp) :: latM_limit                  ! Comparison limit in latitude for model coordinate
+      real(pwp) :: lonM, latM                  ! Longitude/latitude of a model grid point
+      real(pwp) :: gcoords(4,2)                ! Grid point coordinates for computing interpolation coeffs
+      integer(4) :: obsflag                    ! Count observation in direct vicinity
+      integer(4) :: cntobs(4)                  ! Count grid points with 0 to 4 obs. neighbours
+      integer(4) :: obs_sum                    ! Sum of observation integer values
+      integer :: sgn_olat                      ! Orientation of latitude Obs.: -1 for north-south/+1 for south-north
+      integer :: sgn_mlat                      ! Orientation of latitude Model: -1 for north-south/+1 for south-north
+      real(pwp) :: rdate                       ! Current date
+      integer(4) :: year, month, iday          ! Current year, month, day (iday is step read from observation file)
+      integer :: id_obs                        ! Index of observation field in state vector
+      character(lc) :: varname_lon             ! Name of longitude coordinate variable in file
+      character(lc) :: varname_lat             ! Name of latitude coordinate variable in file
+      character(lc) :: varname_obs             ! Name of observation variable in file
+      real(pwp) :: rms_obs                     ! Obs. error standard deviation
+      integer :: missing_value                 ! Missing value above which observations are valid
+      character(len=2) :: region               ! Region for which the data is used ('no', 'ba', 'nb')
+      real(pwp) :: limcoords(3)                ! Limiting coordinates according to region
+      real(pwp), parameter :: sst_scale = 0.01 ! Scaling factor to convert file value to degC
 
 
-! *********************************************
-! *** Initialize full observation dimension ***
-! *********************************************
+      ! *********************************************
+      ! *** Initialize full observation dimension ***
+      ! *********************************************
 
-    if (mype_filter==0) &
-         write (*,'(a,4x,a,a)') 'NEMO-PDAF', 'Assimilate observations - ', trim(obsname)
+      if (mype_filter==0) &
+            write (*,'(a,4x,a,a)') 'NEMO-PDAF', 'Assimilate observations - ', trim(obsname)
 
-    ! Specify region and limiting coordinates
-    region = 'nb'                     ! 'nb'= North and Baltic Seas - no exclusion
-    limcoords(1) = 57.0 * deg2rad    ! north/south limit in Skagerrak
-    limcoords(2) = 9.4 * deg2rad      ! east/west limit over Denmark; use outh of limcoords(1) for 'no'
-    limcoords(3) = 15.0 * deg2rad     ! east/west limit over Sweden; use north of limcoords(1) for 'ba'
+      ! Specify region and limiting coordinates
+      region = 'nb'                     ! 'nb'= North and Baltic Seas - no exclusion
+      limcoords(1) = 57.0 * deg2rad    ! north/south limit in Skagerrak
+      limcoords(2) = 9.4 * deg2rad      ! east/west limit over Denmark; use outh of limcoords(1) for 'no'
+      limcoords(3) = 15.0 * deg2rad     ! east/west limit over Sweden; use north of limcoords(1) for 'ba'
 
-    ! Initialize generic variables (used to keep codes generic)
-    id_obs = id%temp                         ! Index of observation field in state vector
-    dist_obs = dist_sst_cmems                ! Type of distance computation
-    observation_mode = mode_sst_cmems        ! Whether to use interpolation or super-obbing
-    varname_lon = 'lon'                      ! Name of longitude variable in file
-    varname_lat = 'lat'                      ! Name of latitude variable in file
-    varname_obs = varname_sst_cmems          ! Name of observation variable in file
-    rms_obs = rms_obs_sst_cmems              ! Obs. error standard deviation
-    missing_value = -10000                   ! Missing value in observation file
-    file_full = trim(path_sst_cmems)//trim(file_sst_cmems)   ! File name including path
+      ! Initialize generic variables (used to keep codes generic)
+      id_obs = id%temp                         ! Index of observation field in state vector
+      dist_obs = dist_sst_cmems                ! Type of distance computation
+      observation_mode = mode_sst_cmems        ! Whether to use interpolation or super-obbing
+      varname_lon = 'lon'                      ! Name of longitude variable in file
+      varname_lat = 'lat'                      ! Name of latitude variable in file
+      varname_obs = varname_sst_cmems          ! Name of observation variable in file
+      rms_obs = rms_obs_sst_cmems              ! Obs. error standard deviation
+      missing_value = -10000                   ! Missing value in observation file
+      file_full = trim(path_sst_cmems)//trim(file_sst_cmems)   ! File name including path
 
-    ! Store whether to assimilate this observation type (used in routines below)
-    if (assim_sst_cmems) thisobs%doassim = 1
+      ! Store whether to assimilate this observation type (used in routines below)
+      if (assim_sst_cmems) thisobs%doassim = 1
 
-    ! Specify type of distance computation
-    if (trim(dist_obs) == 'gp') then
-       if (mype_filter==0) write (*,'(a,4x,a)') 'NEMO-PDAF', '--- use Cartesian grid point distances'
-       thisobs%disttype = 0   ! 0=Cartesian
-    else
-       if (mype_filter==0) write (*,'(a,4x,a)') 'NEMO-PDAF', '--- use geographic distances'
-       thisobs%disttype = 2   ! 2=Geographic
-    end if
+      ! Specify type of distance computation
+      if (trim(dist_obs) == 'gp') then
+         if (mype_filter==0) write (*,'(a,4x,a)') 'NEMO-PDAF', '--- use Cartesian grid point distances'
+         thisobs%disttype = 0   ! 0=Cartesian
+      else
+         if (mype_filter==0) write (*,'(a,4x,a)') 'NEMO-PDAF', '--- use geographic distances'
+         thisobs%disttype = 2   ! 2=Geographic
+      end if
 
-    ! Number of coordinates used for distance computation
-    ! The distance compution starts from the first row
-    thisobs%ncoord = 2
+      ! Number of coordinates used for distance computation
+      ! The distance compution starts from the first row
+      thisobs%ncoord = 2
 
-    ! In case of MPI parallelization restrict observations to sub-domains
-    if (npes_filter>1) thisobs%use_global_obs = use_global_obs
+      ! In case of MPI parallelization restrict observations to sub-domains
+      if (npes_filter>1) thisobs%use_global_obs = use_global_obs
 
-    ! Omit observation with too large innovation
-    if (omit_sst_cmems > 0.0) thisobs%inno_omit = omit_sst_cmems
+      ! Omit observation with too large innovation
+      if (omit_sst_cmems > 0.0) thisobs%inno_omit = omit_sst_cmems
 
 
-! **********************************
-! *** Read PE-local observations ***
-! **********************************
+      ! **********************************
+      ! *** Read PE-local observations ***
+      ! **********************************
 
     ! Determine current day
     call calc_date(step-1, rdate)
