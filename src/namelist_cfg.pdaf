@@ -2,7 +2,7 @@
 
 &pdaf_nml
   screen = 2
-  dim_ens = 32
+  dim_ens = 2
   filtertype = 7
   subtype = 0
   type_trans = 0
@@ -17,8 +17,15 @@
   sgldbl_io = 'dbl'
   path_dom = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/ens_1'
   fname_dom = 'domain_cfg.nc'
-  path_rst = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/ens_1/restarts'
-  f_basename_rst = 'amm7_ersem_pdaf_19930101_restart'
+  ! the parth to restart files is constructed by the following variables
+  ! path_rst_root//ens_prefix[1-N]//path_rst_suffix//f_basename_rst_000x.nc
+  path_rst_root = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/'
+  ! ensemble prefix
+  ! ensemble numbers must be from 1 - N, it cannot have zero paddings.
+  ens_prefix = 'ens_'
+  ! rest of the path to restart files
+  path_rst_suffix = 'restarts'
+  f_basename_rst = 'amm7_ersem_pdaf_19930102_restart'
 /
 
 &sv_nml
@@ -31,7 +38,7 @@
   sfields(1)%name_incr = 'bckint'
   sfields(1)%name_rest_n = 'tn'
   sfields(1)%name_rest_b = 'tb'
-  sfields(1)%rst_file = 'amm7_ersem_pdaf_19930101_restart'
+  sfields(1)%rst_file = 'amm7_ersem_pdaf_19930102_restart'
   sfields(1)%unit = 'degC'
 
   sfields(2)%ndims = 3
@@ -39,7 +46,7 @@
   sfields(2)%name_incr = 'bckins'
   sfields(2)%name_rest_n = 'sn'
   sfields(2)%name_rest_b = 'sb'
-  sfields(2)%rst_file = 'amm7_ersem_pdaf_19930101_restart'
+  sfields(2)%rst_file = 'amm7_ersem_pdaf_19930102_restart'
   sfields(2)%unit = 'psu'
   sfields(2)%transform = 0
   sfields(2)%trafo_shift = 0.0

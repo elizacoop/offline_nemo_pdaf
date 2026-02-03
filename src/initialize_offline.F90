@@ -11,8 +11,6 @@ contains
    subroutine initialize
       use mod_kind_pdaf
       use parallel_pdaf, only: mype_ens
-      use assimilation_pdaf, only: step_null
-      use nemo_pdaf, only: use_wet_state
       use io_pdaf, only: read_local_domain, read_global_domain
       implicit none
 

@@ -35,7 +35,8 @@ module nemo_pdaf
    integer :: nwet                          ! Number of surface wet grid points
    integer :: nwet3d                        ! Number of 3d wet grid points
    integer, allocatable :: wet_pts(:,:)     ! Index array for wet grid points
-                                            ! (1) latitude, (2) langitude,
+                                            ! (1) Global latitude index,
+                                            ! (2) Global longitude index,
                                             ! (3) number wet layers at given latlon
                                             ! (4) index in 2d grid box
                                             ! (5) starting index in all wet points for vertical column
@@ -67,9 +68,8 @@ contains
    !!
    subroutine set_nemo_grid(screen)
       use mod_kind_pdaf
-      use parallel_pdaf, &
-            only: mype_model, npes_model, comm_model, &
-            MPI_INT, MPI_SUM, MPIerr
+      use parallel_pdaf, only: mype_model, npes_model, comm_model, &
+                               MPI_INT, MPI_SUM, MPIerr
       use PDAF, only: PDAFomi_set_domain_limits
       implicit none
       ! *** Argument ***

@@ -16,7 +16,7 @@
 module statevector_pdaf
 
    use mod_kind_pdaf
-
+   use nemo_pdaf, only: use_wet_state
    implicit none
    save
 
@@ -29,7 +29,7 @@ module statevector_pdaf
       character(len=20) :: name_incr = ''   !< Name of field in increment file
       character(len=20) :: name_rest_n = '' !< Name of field in restart file (n-field)
       character(len=20) :: name_rest_b = '' !< Name of field in restart file (b-field)
-      character(len=30) :: rst_file = ''    !< Name of restart file
+      character(len=256) :: rst_file = ''   !< Name of restart file
       character(len=20) :: unit = ''        !< Unit of variable
       integer :: transform = 0              !< Type of variable transformation
       real(pwp) :: trafo_shift = 0.0_pwp    !< Constant to shift value in transformation
@@ -58,7 +58,7 @@ module statevector_pdaf
    ! Variables to handle multiple fields in the state vector
    integer :: n_fields          !< number of fields in state vector
 
-   namelist /sv_nml/ n_fields
+   namelist /sv_nml/ n_fields, use_wet_state
    namelist /sfields_nml/ sfields
 
 !$OMP THREADPRIVATE(sfields_l)

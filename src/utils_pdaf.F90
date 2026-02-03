@@ -19,8 +19,7 @@ contains
   !!
    subroutine init_info_pdaf()
 
-      use assimilation_pdaf, & ! Variables for assimilation
-            only: filtertype, subtype, dim_ens, forget
+      use config_pdaf, only: filtertype, subtype, dim_ens, forget
       ! *****************************
       ! *** Initial Screen output ***
       ! *****************************
@@ -110,7 +109,7 @@ contains
    !! - Called from: `init_pdaf`
    !!
    subroutine read_config_pdaf()
-      use assimilation_pdaf, only: pdaf_nml
+      use config_pdaf, only: pdaf_nml
       use io_pdaf, only: io_nml, add_slash
       use statevector_pdaf, only: sv_nml
       ! ****************************************************
@@ -128,7 +127,7 @@ contains
 
    subroutine print_config()
       use parallel_pdaf, only: mype_ens
-      use assimilation_pdaf, only: print_pdaf_configuration
+      use config_pdaf, only: print_pdaf_configuration
       use io_pdaf, only: print_io_configuration
       ! Print PDAF parameters to screen
       showconf: if (mype_ens == 0) then

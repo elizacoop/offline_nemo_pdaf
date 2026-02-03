@@ -50,11 +50,10 @@ contains
    !-------------------------------------------------------------------------------
    !> Initialize MPI communicators for PDAF
    !!
-   subroutine init_parallel_pdaf(screen)
+   subroutine init_parallel_pdaf()
       use PDAF, only: PDAF3_set_parallel
       use timer, only: timeit
-
-      integer, intent(in) :: screen
+      use config_pdaf, only: screen
 
       integer :: i, j                   !< Counters
       integer :: pe_index               !< Index of PE

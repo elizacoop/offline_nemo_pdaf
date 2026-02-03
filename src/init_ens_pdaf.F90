@@ -14,12 +14,11 @@
 !!
 subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
-
    use mod_kind_pdaf
    use parallel_pdaf, only: mype_filter
-
+   use io_pdaf, only: read_restart
+   use transforms_pdaf, only: transform_field_mv
    implicit none
-
    ! *** Arguments ***
    integer, intent(in) :: filtertype                     !< Type of filter to initialize
    integer, intent(in) :: dim_p                          !< PE-local state dimension
@@ -43,7 +42,17 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
    if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from list of output files'
 
-!    call read_ens_mv_filelist(1.0, zeromean, path_ens, dim_p, dim_ens, ens_p)
+   if (mype_filter==0 .and. member==1) then
+      verbose = 1
+   else
+      verbose = 0
+   end if
+
+   do member = 1 , dim_ens
+      call read_restart(member, ens_p(:, member))
+      ! *** Transform fields
+      call transform_field_mv(1, ens_p(:,member), 11, verbose)
+   end do
 
    inv_dim_ens = 1.0_pwp/real(dim_ens, kind=pwp)
    ! Scale ensemble perturbations - either all using 'ensscale' or field-wise
@@ -54,18 +63,5 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
       end do
 !$OMP END PARALLEL DO
    end do
-
-
-!    ! *** Transform fields
-!    do member = 1 , dim_ens
-
-!       if (mype_filter==0 .and. member==1) then
-!          verbose = 1
-!       else
-!          verbose = 0
-!       end if
-
-!       ! call transform_field_mv(1, ens_p(:,member), 11, verbose)
-!    end do
 
 end subroutine init_ens_pdaf

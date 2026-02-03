@@ -11,30 +11,25 @@
 !! - Called from: `PDAFomi_assimilate_local`/`assimilation_pdaf`
 !
 subroutine init_n_domains_pdaf(step, n_domains_p)
+   use nemo_pdaf, only: nwet
+   implicit none
+   ! *** Arguments ***
+   integer, intent(in)  :: step        !< Current time step
+   integer, intent(out) :: n_domains_p !< PE-local number of analysis domains
 
-  use nemo_pdaf, &
-       only: nwet
+   ! ************************************
+   ! *** Initialize number of domains ***
+   ! ************************************
 
-  implicit none
+   ! *******************************************
+   !
+   ! The number of local domains is defined as
+   ! the number of grid points at the surface
+   ! where tmask is 1 i.e. horizontal localization
+   ! is used, and land points are ignored.
+   !
+   ! *******************************************
 
-! *** Arguments ***
-  integer, intent(in)  :: step        !< Current time step
-  integer, intent(out) :: n_domains_p !< PE-local number of analysis domains
-
-
-! ************************************
-! *** Initialize number of domains ***
-! ************************************
-
-  ! *******************************************
-  !
-  ! The number of local domains is defined as
-  ! the number of grid points at the surface
-  ! where tmask is 1 i.e. horizontal localization
-  ! is used, and land points are ignored.
-  !
-  ! *******************************************
-
-  n_domains_p = nwet
+   n_domains_p = nwet
 
 end subroutine init_n_domains_pdaf

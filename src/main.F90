@@ -13,7 +13,7 @@ program MAIN
                init_parallel, finalize_parallel, init_parallel_pdaf
    use mod_memcount_pdaf, only: memcount_ini, memcount_get
    use timer, only: timeit, time_tot
-   use assimilation_pdaf, only: screen !, assimilate_pdaf
+   use assimilation_pdaf, only: assimilate_pdaf
    use utils_pdaf, only: read_config_pdaf, print_config
    use initialize_offline, only: initialize
    use initialize_pdaf, only: init_pdaf
@@ -43,7 +43,7 @@ program MAIN
    call read_config_pdaf()
    ! *** Initialize MPI communicators for PDAF (model and filter) ***
    ! *** NOTE: It is always n_modeltasks=1 for offline mode       ***
-   call init_parallel_pdaf(screen)
+   call init_parallel_pdaf()
    call print_config()
    ! *** Initialize model information ***
    call initialize()

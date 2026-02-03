@@ -14,10 +14,10 @@
 subroutine init_dim_l_pdaf(step, domain_p, dim_l)
    use mod_kind_pdaf
    use PDAF, only: PDAFlocal_set_indices
-   use assimilation_pdaf, only: domain_coords, dim_state_p, id_lstate_in_pstate
-   use statevector_pdaf, only: n_fields, sfields, sfields_l
-   use nemo_pdaf, only: lons, lats, use_wet_state, nwet, wet_pts, &
-                  sdim2d, deg2rad
+   use assimilation_pdaf, only: domain_coords, id_lstate_in_pstate
+   use statevector_pdaf, only: n_fields, sfields, sfields_l, dim_state_p
+   use nemo_pdaf, only: nav_lon, nav_lat, nwet, wet_pts, &
+                        sdim2d, deg2rad, use_wet_state
    implicit none
    ! *** Arguments ***
    integer, intent(in)  :: step     !< Current time step
@@ -61,8 +61,8 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
 
    ! Use T-values to get local coordinates
    ! the coordinates are stored in radians (as required by PDAFOMI)
-   domain_coords(1) = lons(id_i, id_j) * deg2rad
-   domain_coords(2) = lats(id_i, id_j) * deg2rad
+   domain_coords(1) = nav_lon(id_i, id_j) * deg2rad
+   domain_coords(2) = nav_lat(id_i, id_j) * deg2rad
 
 
    ! ******************************************************

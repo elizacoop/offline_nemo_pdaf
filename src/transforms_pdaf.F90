@@ -17,12 +17,6 @@ module transforms_pdaf
   implicit none
   save
 
-  interface field2state_missval
-    module procedure field2state_missval_2d
-    module procedure field2state_missval_3d
-    module procedure field2state_missval_4d
-  end interface
-
   interface field2state
     module procedure field2state_2d
     module procedure field2state_3d
@@ -44,483 +38,216 @@ module transforms_pdaf
   end interface
 
 contains
-!===============================================================================
-
-
-!> Convert from NEMO model field to state vector
-!!
-  subroutine field2state_4d(field, state, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: field(:,:,:,:)   !< Model field
-    real(pwp), intent(inout) :: state(:)         !< State vector
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize state vector from model field ***
-
-    if (use_wet_state==1) then
-
-       do k = 1, n_levels
+   !============================================================================
+   !> Convert from NEMO model field to state vector
+   !!
+   subroutine field2state_4d(field, state, offset, ndims)
+      implicit none
+      ! *** Arguments ***
+      real(pwp), intent(in)    :: field(:,:,:,:)   !< Model field
+      real(pwp), intent(inout) :: state(:)         !< State vector
+      integer,   intent(in)    :: offset           !< Offset in state vector
+      integer,   intent(in)    :: ndims            !< Number of dimensions in field
+      ! *** Local variables ***
+      integer :: i, j, k
+      integer :: cnt
+      integer :: n_levels
+      ! *** Set number of model layers ***
+      if (ndims == 3) then
+         n_levels = nlvls
+      else
+         n_levels = 1
+      end if
+      ! *** Initialize state vector from model field ***
+      if (use_wet_state==1) then
+         do k = 1, n_levels
 !$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             if (k <= wet_pts(3,i)) then
-                state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k, 1)
-             end if
-          end do
+            do i = 1, nwet
+               cnt = i + nwet*(k-1) + offset
+               if (k <= wet_pts(3,i)) then
+                  state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k, 1)
+               end if
+            end do
 !$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
+         end do
+      elseif (use_wet_state==2) then
+         if (ndims == 3) then
 !$OMP PARALLEL DO PRIVATE (i, k, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k, 1)
-             end do
-          end do
+            do i = 1, nwet
+               cnt = wet_pts(5,i) - 1 + offset
+               do k = 1, wet_pts(3,i)
+                  state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k, 1)
+               end do
+            end do
 !$OMP END PARALLEL DO
-
-       else
-
+         else
 !$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1, 1)
-          end do
+            do i = 1, nwet
+               cnt = offset + i
+               state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1, 1)
+            end do
 !$OMP END PARALLEL DO
-
-       end if
-
-    else
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1,nj_p
-             do i = 1, ni_p
-                state(cnt) = field(i,j,k,1)
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-    end if
-
-  end subroutine field2state_4d
-!==============================================================================
-
-!> Convert from NEMO model field to state vector
-!!
-  subroutine field2state_3d(field, state, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: field(:,:,:)     !< Model field
-    real(pwp), intent(inout) :: state(:)         !< State vector
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize state vector from model field ***
-
-    if (use_wet_state==1) then
-
-       do k = 1, n_levels
+         end if
+      else
+         cnt = 1 + offset
+         do k = 1, n_levels
+            do j = 1,nj_p
+               do i = 1, ni_p
+                  state(cnt) = field(i,j,k,1)
+                  cnt = cnt + 1
+               enddo
+            enddo
+         enddo
+      end if
+   end subroutine field2state_4d
+   !============================================================================
+   !> Convert from NEMO model field to state vector
+   !!
+   subroutine field2state_3d(field, state, offset, ndims)
+      implicit none
+      ! *** Arguments ***
+      real(pwp), intent(in)    :: field(:,:,:)     !< Model field
+      real(pwp), intent(inout) :: state(:)         !< State vector
+      integer,   intent(in)    :: offset           !< Offset in state vector
+      integer,   intent(in)    :: ndims            !< Number of dimensions in field
+      ! *** Local variables ***
+      integer :: i, j, k
+      integer :: cnt
+      integer :: n_levels
+      ! *** Set number of model layers ***
+      if (ndims == 3) then
+         n_levels = nlvls
+      else
+         n_levels = 1
+      end if
+      ! *** Initialize state vector from model field ***
+      if (use_wet_state==1) then
+         do k = 1, n_levels
 !$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             if (k <= wet_pts(3,i)) then
-                state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k)
-             end if
-          end do
+            do i = 1, nwet
+               cnt = i + nwet*(k-1) + offset
+               if (k <= wet_pts(3,i)) then
+                  state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k)
+               end if
+            end do
 !$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k)
-             end do
-          end do
-
-       else
-          do i = 1, nwet
-             cnt = offset + i
-             state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1)
-          end do
-       end if
-
-    else
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1,nj_p
-             do i = 1, ni_p
-                state(cnt) = field(i,j,k)
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-    end if
-
-  end subroutine field2state_3d
-!==============================================================================
-
-  !> Convert from NEMO model field to state vector
-!!
-  subroutine field2state_2d(field, state, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: field(:,:)       !< Model field
-    real(pwp), intent(inout) :: state(:)         !< State vector
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j
-    integer :: cnt
-
-! *** Initialize state vector from model field ***
-
-    if ((use_wet_state==1) .or. (use_wet_state==2)) then
-       do i = 1, nwet
-          cnt = i + offset
-          state(cnt) = field(wet_pts(6, i), wet_pts(7, i))
-       end do
-    else
-       cnt = 1 + offset
-       do j = 1,nj_p
-          do i = 1, ni_p
-             state(cnt) = field(i,j)
-             cnt = cnt + 1
-          enddo
-       enddo
-    end if
-
-  end subroutine field2state_2d
-!===============================================================================
-
-
-!> Convert from NEMO model field to state vector
-!!
-  subroutine field2state_missval_4d(field, state, offset, ndims, missval)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: field(:,:,:,:)   !< Model field
-    real(pwp), intent(inout) :: state(:)         !< State vector
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-    real(pwp), intent(in)    :: missval          !< missing value
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize state vector from model field ***
-
-    if (use_wet_state==1) then
-
-       do k = 1, n_levels
+         end do
+      elseif (use_wet_state==2) then
+         if (ndims == 3) then
+            do i = 1, nwet
+               cnt = wet_pts(5,i) - 1 + offset
+               do k = 1, wet_pts(3,i)
+                  state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k)
+               end do
+            end do
+         else
+            do i = 1, nwet
+               cnt = offset + i
+               state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1)
+            end do
+         end if
+      else
+         cnt = 1 + offset
+         do k = 1, n_levels
+            do j = 1,nj_p
+               do i = 1, ni_p
+                  state(cnt) = field(i,j,k)
+                  cnt = cnt + 1
+               enddo
+            enddo
+         enddo
+      end if
+   end subroutine field2state_3d
+   !============================================================================
+   !> Convert from NEMO model field to state vector
+   !!
+   subroutine field2state_2d(field, state, offset, ndims)
+      implicit none
+      ! *** Arguments ***
+      real(pwp), intent(in)    :: field(:,:)       !< Model field
+      real(pwp), intent(inout) :: state(:)         !< State vector
+      integer,   intent(in)    :: offset           !< Offset in state vector
+      integer,   intent(in)    :: ndims            !< Number of dimensions in field
+      ! *** Local variables ***
+      integer :: i, j
+      integer :: cnt
+      ! *** Initialize state vector from model field ***
+      if ((use_wet_state==1) .or. (use_wet_state==2)) then
+         do i = 1, nwet
+            cnt = i + offset
+            state(cnt) = field(wet_pts(6, i), wet_pts(7, i))
+         end do
+      else
+         cnt = 1 + offset
+         do j = 1,nj_p
+            do i = 1, ni_p
+               state(cnt) = field(i,j)
+               cnt = cnt + 1
+            enddo
+         enddo
+      end if
+   end subroutine field2state_2d
+   !============================================================================
+   !> Convert from state vector to NEMO model field
+   !!
+   subroutine state2field_4d_dbl(state, field, offset, ndims)
+      implicit none
+      ! *** Arguments ***
+      real(pwp), intent(in)    :: state(:)         !< State vector
+      real(pwp), intent(out)   :: field(:,:,:,:)   !< Model field
+      integer,   intent(in)    :: offset           !< Offset in state vector
+      integer,   intent(in)    :: ndims            !< Number of dimensions in field
+      ! *** Local variables ***
+      integer :: i, j, k
+      integer :: cnt
+      integer :: n_levels
+      ! *** Set number of model layers ***
+      if (ndims == 3) then
+         n_levels = nlvls
+      else
+         n_levels = 1
+      end if
+      ! *** Initialize model field from state vector
+      if (use_wet_state==1) then
+         do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             if (k <= wet_pts(3,i)) then
-                state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k, 1)
-             end if
-          end do
+            do i = 1, nwet
+               cnt = i + nwet*(k-1) + offset
+               field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt)
+            end do
 !$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
-!$OMP PARALLEL DO PRIVATE (i, k, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k, 1)
-             end do
-          end do
-!$OMP END PARALLEL DO
-
-       else
-
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1, 1)
-          end do
-!$OMP END PARALLEL DO
-
-       end if
-
-    else
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1,nj_p
-             do i = 1, ni_p
-                if (abs(field(i,j,k,1)- missval) > 0.1_pwp) then
-                   state(cnt) = field(i,j,k,1)
-                else
-                   state(cnt) = 0.0_pwp
-                endif
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-    end if
-
-  end subroutine field2state_missval_4d
-!==============================================================================
-
-!> Convert from NEMO model field to state vector
-!!
-  subroutine field2state_missval_3d(field, state, offset, ndims, missval)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: field(:,:,:)     !< Model field
-    real(pwp), intent(inout) :: state(:)         !< State vector
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-    real(pwp), intent(in)    :: missval          !< missing value
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize state vector from model field ***
-
-    if (use_wet_state==1) then
-
-       do k = 1, n_levels
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             if (k <= wet_pts(3,i)) then
-                state(cnt) = field(wet_pts(6, i), wet_pts(7, i), k)
-             end if
-          end do
-!$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                state(cnt + k) = field(wet_pts(6, i), wet_pts(7, i), k)
-             end do
-          end do
-
-       else
-          do i = 1, nwet
-             cnt = offset + i
-             state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1)
-          end do
-       end if
-
-    else
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1,nj_p
-             do i = 1, ni_p
-                if (abs(field(i,j,k)- missval) > 0.1_pwp) then
-                   state(cnt) = field(i,j,k)
-                else
-                   state(cnt) = 0.0_pwp
-                endif
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-    end if
-
-  end subroutine field2state_missval_3d
-!==============================================================================
-
-  !> Convert from NEMO model field to state vector
-!!
-  subroutine field2state_missval_2d(field, state, offset, ndims, missval)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: field(:,:)       !< Model field
-    real(pwp), intent(inout) :: state(:)         !< State vector
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-    real(pwp), intent(in)    :: missval          !< missing value
-
-! *** Local variables ***
-    integer :: i, j
-    integer :: cnt
-
-! *** Initialize state vector from model field ***
-
-    if ((use_wet_state==1) .or. (use_wet_state==2)) then
-       do i = 1, nwet
-          cnt = i + offset
-          state(cnt) = field(wet_pts(6, i), wet_pts(7, i))
-       end do
-    else
-       cnt = 1 + offset
-       do j = 1,nj_p
-          do i = 1, ni_p
-             if (abs(field(i,j)- missval) > 0.1_pwp) then
-                state(cnt) = field(i,j)
-             else
-                state(cnt) = 0.0_pwp
-             endif
-             cnt = cnt + 1
-          enddo
-       enddo
-    end if
-
-  end subroutine field2state_missval_2d
-
-!==============================================================================
-
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_4d_dbl(state, field, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(pwp), intent(out)   :: field(:,:,:,:)   !< Model field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize model field from state vector
-
-    if (use_wet_state==1) then
-
-       do k = 1, nlvls
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt)
-          end do
-!$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
+         end do
+      elseif (use_wet_state==2) then
+         if (ndims == 3) then
 !!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt + k)
-             end do
+            do i = 1, nwet
+               cnt = wet_pts(5,i) - 1 + offset
+               do k = 1, wet_pts(3,i)
+                  field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt + k)
+               end do
 !!!!$OMP END PARALLEL DO
-          end do
-
-       else
-
+            end do
+         else
 !!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             field(wet_pts(6, i), wet_pts(7, i), 1, 1) = state(cnt)
+            do i = 1, nwet
+               cnt = offset + i
+               field(wet_pts(6, i), wet_pts(7, i), 1, 1) = state(cnt)
 !!!!$OMP END PARALLEL DO
-          end do
+            end do
+         end if
+      else
+         cnt = 1 + offset
+         do k = 1, n_levels
+            do j = 1, nj_p
+               do i = 1, ni_p
+                  field(i,j,k,1) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
+                  cnt = cnt + 1
+               enddo
+            enddo
+         enddo
+      end if
 
-       end if
-    else
-
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1, nj_p
-             do i = 1, ni_p
-!                if (tmask(i + i0, j + j0, k) == 1.0_pwp) then
-                   field(i,j,k,1) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
-!                end if
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-
-    end if
-
-  end subroutine state2field_4d_dbl
+   end subroutine state2field_4d_dbl
 !==============================================================================
 
 !> Convert from state vector to NEMO model field
@@ -1063,252 +790,245 @@ contains
 
   end subroutine transform_field
 
-!==============================================================================
+   !==============================================================================
 
-!> Transform all fields, e.g. to log and back
-!!
-  subroutine transform_field_mv(type, state, limits, verbose)
+   !> Transform all fields, e.g. to log and back
+   !!
+   subroutine transform_field_mv(type, state, limits, verbose)
 
-    implicit none
+      implicit none
 
-! *** Arguments ***
-    integer,   intent(in)    :: type     !< Direction of transformation
-    real(pwp), intent(inout) :: state(:) !< State vector
-    integer,   intent(in)    :: limits   !< Whether to also apply limits
-             !< (0) no limits applied,
-             !< (11) limits applied to original variable for type 1
-             !< (12) limits applied to transformed variable for type 1
-             !< (21) limits applied to original variable for type 2
-             !< (22) limits applied to transformed variable for type 2
-    integer,   intent(in)    :: verbose  !< (1) to write screen output
+      ! *** Arguments ***
+      integer,   intent(in)    :: type     !< Direction of transformation
+      real(pwp), intent(inout) :: state(:) !< State vector
+      integer,   intent(in)    :: limits   !< Whether to also apply limits
+               !< (0) no limits applied,
+               !< (11) limits applied to original variable for type 1
+               !< (12) limits applied to transformed variable for type 1
+               !< (21) limits applied to original variable for type 2
+               !< (22) limits applied to transformed variable for type 2
+      integer,   intent(in)    :: verbose  !< (1) to write screen output
 
-! *** Local variables ***
-    integer           :: i,j        ! Counters
-    integer           :: cnt, cnt2  ! Counters
-    integer           :: trafo      ! Type of transformation
-    real(pwp)         :: shift      ! constant for shifting value in transformation
-    integer           :: dim        ! dimension of field in state vector
-    integer           :: off        ! Offset of field in state vector
-    character(len=10) :: var        ! Name of variable
-    integer           :: dolimit    ! Whether to apply a min/max limit
-    real(pwp)         :: max_limit  ! Maximum limiting value
-    real(pwp)         :: min_limit  ! Minimum limiting value
+      ! *** Local variables ***
+      integer           :: i,j        ! Counters
+      integer           :: cnt, cnt2  ! Counters
+      integer           :: trafo      ! Type of transformation
+      real(pwp)         :: shift      ! constant for shifting value in transformation
+      integer           :: dim        ! dimension of field in state vector
+      integer           :: off        ! Offset of field in state vector
+      character(len=10) :: var        ! Name of variable
+      integer           :: dolimit    ! Whether to apply a min/max limit
+      real(pwp)         :: max_limit  ! Maximum limiting value
+      real(pwp)         :: min_limit  ! Minimum limiting value
 
+      ! *** Apply limits before performing transformation ***
+      if (type==1) then
+         ! Apply limits to original variable
+         if (limits==11) call var_limits_mv(state, verbose)
+      elseif (type==2) then
+         ! Apply limits to transformed variable
+         if (limits==22) call var_limits_mv(state, verbose)
+      end if
 
-    ! *** Apply limits before performing transformation ***
-    if (type==1) then
+      ! *** Apply field transformations ***
 
-          ! Apply limits to original variable
-          if (limits==11) call var_limits_mv(state, verbose)
-    elseif (type==2) then
+      if (verbose>0) write(*,'(a, 4x, a)') &
+            'NEMO-PDAF', 'Apply field transformations'
 
-          ! Apply limits to transformed variable
-          if (limits==22) call var_limits_mv(state, verbose)
-    end if
+      do i = 1, n_fields
 
-
-    ! *** Apply field transformations ***
-
-    if (verbose>0) write(*,'(a, 4x, a)') &
-         'NEMO-PDAF', 'Apply field transformations'
-
-    do i = 1, n_fields
-
-       ! Initialize values from sfields
-       trafo = sfields(i)%transform
-       shift = sfields(i)%trafo_shift
-       dim = sfields(i)%dim
-       off = sfields(i)%off
-       var = sfields(i)%variable
-       dolimit = sfields(i)%limit
-       min_limit = sfields(i)%min_limit
-       max_limit = sfields(i)%max_limit
+         ! Initialize values from sfields
+         trafo = sfields(i)%transform
+         shift = sfields(i)%trafo_shift
+         dim = sfields(i)%dim
+         off = sfields(i)%off
+         var = sfields(i)%variable
+         dolimit = sfields(i)%limit
+         min_limit = sfields(i)%min_limit
+         max_limit = sfields(i)%max_limit
 
 
-       ! *** Transformations
-       if (type==1) then
-          ! Transformation from NEMO value to transformed value
+         ! *** Transformations
+         if (type==1) then
+            ! Transformation from NEMO value to transformed value
 
-          select case (trafo)
-          case(0)
-!             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-!                  'No transformation of variable ', trim(var)
-          case(1)
-             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-                  'NEMO-PDAF', '--- apply log-10 transformation to ', trim(var)
-             state(off+1 : off+dim) = log10(state(off+1 : off+dim) + shift)
-          case(2)
-             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-                  'NEMO-PDAF', '--- apply ln transformation to', trim(var)
-             cnt=0
-             cnt2=0
+            select case (trafo)
+            case(0)
+               ! if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
+               !      'No transformation of variable ', trim(var)
+            case(1)
+               if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                     'NEMO-PDAF', '--- apply log-10 transformation to ', trim(var)
+               state(off+1 : off+dim) = log10(state(off+1 : off+dim) + shift)
+            case(2)
+               if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                     'NEMO-PDAF', '--- apply ln transformation to', trim(var)
+               cnt=0
+               cnt2=0
 
-             do j = off+1, off+dim
-                if (state(j)>0.0_pwp) then
-                   state(j) = log(state(j) + shift)
-                   cnt2 = cnt2+1
-                else
-                   state(j) = -30.0_pwp
-                   cnt = cnt+1
-                end if
-             end do
+               do j = off+1, off+dim
+                  if (state(j)>0.0_pwp) then
+                     state(j) = log(state(j) + shift)
+                     cnt2 = cnt2+1
+                  else
+                     state(j) = -30.0_pwp
+                     cnt = cnt+1
+                  end if
+               end do
 
-             if (verbose>0 .and. cnt>0) write (*,'(a,8x,a,1x,a,2i9)') &
-                  'NEMO-PDAF','--- number of <=0, >0:', trim(var), cnt, cnt2
+               if (verbose>0 .and. cnt>0) write (*,'(a,8x,a,1x,a,2i9)') &
+                     'NEMO-PDAF','--- number of <=0, >0:', trim(var), cnt, cnt2
 
-          case DEFAULT
-             write(*,*) 'ERROR: no valid variable transformation selected, type', trafo
-          end select
+            case DEFAULT
+               write(*,*) 'ERROR: no valid variable transformation selected, type', trafo
+            end select
 
-       elseif (type==2) then
+         elseif (type==2) then
 
-          ! Transformation from transformed value to NEMO value
+            ! Transformation from transformed value to NEMO value
 
-          select case (trafo)
-          case(0)
-!             if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
-!                  'No transformation of variable ', trim(var)
-          case(1)
-             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-                  'NEMO-PDAF', '--- revert log-10 transformation of ', trim(var)
-             state(off+1 : off+dim) = (10.D0**state(off+1 : off+dim))-shift
-          case(2)
-             if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-                  'NEMO-PDAF', '--- revert ln transformation of ', trim(var)
-             cnt=0
-             cnt2=0
-             do j = off+1, off+dim
-                if (state(j)>-30.0_pwp) then
-                   cnt2 = cnt2+1
-                   state(j) = exp(state(j))-shift
-                else
-                   state(j) = 0.0_pwp
-                   cnt = cnt + 1
-                end if
-             end do
+            select case (trafo)
+            case(0)
+               ! if (verbose>0) write(*,'(a, 1x, a, 1x, a)') &
+               !      'No transformation of variable ', trim(var)
+            case(1)
+               if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                     'NEMO-PDAF', '--- revert log-10 transformation of ', trim(var)
+               state(off+1 : off+dim) = (10.D0**state(off+1 : off+dim))-shift
+            case(2)
+               if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                     'NEMO-PDAF', '--- revert ln transformation of ', trim(var)
+               cnt=0
+               cnt2=0
+               do j = off+1, off+dim
+                  if (state(j)>-30.0_pwp) then
+                     cnt2 = cnt2+1
+                     state(j) = exp(state(j))-shift
+                  else
+                     state(j) = 0.0_pwp
+                     cnt = cnt + 1
+                  end if
+               end do
 
-             if (verbose>0 .and. cnt>0) write (*,'(a,8x,a,1x,a,2i9)') &
-                  'NEMO-PDAF','--- number of <=0, >0:', trim(var), cnt, cnt2
+               if (verbose>0 .and. cnt>0) write (*,'(a,8x,a,1x,a,2i9)') &
+                     'NEMO-PDAF','--- number of <=0, >0:', trim(var), cnt, cnt2
 
-          case DEFAULT
-             write(*,*) 'ERROR: no valid variable transformation selected, type', trafo
-          end select
+            case DEFAULT
+               write(*,*) 'ERROR: no valid variable transformation selected, type', trafo
+            end select
 
-       end if
+         end if
 
-    end do
+      end do
 
-    ! *** Apply limits after performing transformation ***
-    if (type==1) then
+      ! *** Apply limits after performing transformation ***
+      if (type==1) then
+         ! Forward transform: Apply limits to transformed variable
+         if (limits==12) call var_limits_mv(state, verbose)
+      elseif (type==2) then
+         ! Backwar transform: Apply limits to original variable
+         if (limits==21) call var_limits_mv(state, verbose)
+      end if
 
-          ! Forward transform: Apply limits to transformed variable
-          if (limits==12) call var_limits_mv(state, verbose)
-    elseif (type==2) then
+   end subroutine transform_field_mv
 
-          ! Backwar transform: Apply limits to original variable
-          if (limits==21) call var_limits_mv(state, verbose)
-    end if
+   !============================================================================
+   !> Apply limits to variables
+   !!
+   subroutine var_limits_mv(state, verbose)
 
-  end subroutine transform_field_mv
+      implicit none
 
-!==============================================================================
+      ! *** Arguments ***
+      real(pwp), intent(inout) :: state(:) !< State vector
+      integer,   intent(in)    :: verbose  !< (1) to write screen output
 
-!> Apply limits to variables
-!!
-  subroutine var_limits_mv(state, verbose)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(inout) :: state(:) !< State vector
-    integer,   intent(in)    :: verbose  !< (1) to write screen output
-
-! *** Local variables ***
-    integer           :: i, j, cnt, cnt1  ! Counters
-    integer           :: dim        ! dimension of field in state vector
-    integer           :: off        ! Offset of field in state vector
-    character(len=10) :: var        ! Name of variable
-    integer           :: dolimit    ! Whether to apply a min/max limit
-    real(pwp)         :: max_limit  ! Maximum limiting value
-    real(pwp)         :: min_limit  ! Minimum limiting value
+      ! *** Local variables ***
+      integer           :: i, j, cnt, cnt1  ! Counters
+      integer           :: dim        ! dimension of field in state vector
+      integer           :: off        ! Offset of field in state vector
+      character(len=10) :: var        ! Name of variable
+      integer           :: dolimit    ! Whether to apply a min/max limit
+      real(pwp)         :: max_limit  ! Maximum limiting value
+      real(pwp)         :: min_limit  ! Minimum limiting value
 
 
-    if (verbose>0) write(*,'(a, 4x, a)') &
-         'NEMO-PDAF', 'Apply limits to model fields'
+      if (verbose>0) write(*,'(a, 4x, a)') &
+            'NEMO-PDAF', 'Apply limits to model fields'
 
-    do i = 1, n_fields
+      do i = 1, n_fields
 
-       ! Initialize values from sfields
-       dim = sfields(i)%dim
-       off = sfields(i)%off
-       var = sfields(i)%variable
-       dolimit = sfields(i)%limit
-       min_limit = sfields(i)%min_limit
-       max_limit = sfields(i)%max_limit
+         ! Initialize values from sfields
+         dim = sfields(i)%dim
+         off = sfields(i)%off
+         var = sfields(i)%variable
+         dolimit = sfields(i)%limit
+         min_limit = sfields(i)%min_limit
+         max_limit = sfields(i)%max_limit
 
 
-       ! *** Apply Limits
+         ! *** Apply Limits
 
-       cnt = 0
-       cnt1 = 0
-       if (dolimit == 1) then
+         cnt = 0
+         cnt1 = 0
+         if (dolimit == 1) then
 
-          if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', '--- apply min. limit',min_limit,'to ', trim(var)
+            if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- apply min. limit',min_limit,'to ', trim(var)
 
-          ! Apply minimum limit
-          do j = off+1, off+dim
-             if (state(j) < min_limit) then
-                state(j) = min_limit
-                cnt = cnt + 1
-             end if
-          end do
+            ! Apply minimum limit
+            do j = off+1, off+dim
+               if (state(j) < min_limit) then
+                  state(j) = min_limit
+                  cnt = cnt + 1
+               end if
+            end do
 
-          if (cnt>0 .and. verbose>0) &
-               write(*,'(a, 8x, a, i8)') 'NEMO-PDAF', '--- number of affected values', cnt
+            if (cnt>0 .and. verbose>0) &
+                  write(*,'(a, 8x, a, i8)') 'NEMO-PDAF', '--- number of affected values', cnt
 
-       elseif (dolimit == 2) then
+         elseif (dolimit == 2) then
 
-          if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', '--- apply max. limit',max_limit,'to ', trim(var)
+            if (verbose>0) write(*,'(a, 4x, a, es12.3, 1x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- apply max. limit',max_limit,'to ', trim(var)
 
-          ! Apply maximum limit
-          do j = off+1, off+dim
-             if (state(j) > max_limit) then
-                state(j) = max_limit
-                cnt = cnt + 1
-             end if
-          end do
+            ! Apply maximum limit
+            do j = off+1, off+dim
+               if (state(j) > max_limit) then
+                  state(j) = max_limit
+                  cnt = cnt + 1
+               end if
+            end do
 
-          if (cnt>0 .and. verbose>0) &
-               write(*,'(a, 8x, a, i8)') 'NEMO-PDAF', '--- number of affected values', cnt
+            if (cnt>0 .and. verbose>0) &
+                  write(*,'(a, 8x, a, i8)') 'NEMO-PDAF', '--- number of affected values', cnt
 
-       elseif (dolimit == 3) then
+         elseif (dolimit == 3) then
 
-          if (verbose>0) write(*,'(a, 4x, a, 2es12.3, 1x, a, 1x, a)') &
-               'NEMO-PDAF', '--- apply min/max limits of',min_limit,max_limit, 'to ', trim(var)
+            if (verbose>0) write(*,'(a, 4x, a, 2es12.3, 1x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- apply min/max limits of',min_limit,max_limit, 'to ', trim(var)
 
-          ! Apply minimum and maximum limits
-          do j = off+1, off+dim
-             if (state(j) < min_limit) then
-                state(j) = min_limit
-                cnt1 = cnt1 + 1
-             elseif (state(j) > max_limit) then
-                state(j) = max_limit
-                cnt = cnt + 1
-             end if
-          end do
+            ! Apply minimum and maximum limits
+            do j = off+1, off+dim
+               if (state(j) < min_limit) then
+                  state(j) = min_limit
+                  cnt1 = cnt1 + 1
+               elseif (state(j) > max_limit) then
+                  state(j) = max_limit
+                  cnt = cnt + 1
+               end if
+            end do
 
-          if ((cnt>0 .or. cnt1>0) .and. verbose>0) &
-               write(*,'(a, 8x, a, 2i8)') 'NEMO-PDAF', '--- number of affected values', cnt1, cnt
-       else
+            if ((cnt>0 .or. cnt1>0) .and. verbose>0) &
+                  write(*,'(a, 8x, a, 2i8)') 'NEMO-PDAF', '--- number of affected values', cnt1, cnt
+         else
 
-          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-               'NEMO-PDAF', '--- no limit applied to ', trim(var)
-       end if
+            if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
+                  'NEMO-PDAF', '--- no limit applied to ', trim(var)
+         end if
 
-    end do
+      end do
 
-  end subroutine var_limits_mv
+   end subroutine var_limits_mv
 
 end module transforms_pdaf
