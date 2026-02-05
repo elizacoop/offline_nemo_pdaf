@@ -30,7 +30,7 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
    use mod_memcount_pdaf, only: memcount
    use mod_kind_pdaf
    use io_pdaf, only: write_increment_mv
-   use parallel_pdaf, only: mype=>mype_filter, comm_filter, MPIerr
+   use parallel_pdaf, only: mype=>mype_filter
 
    implicit none
 
@@ -50,7 +50,6 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
    ! *** local variables ***
    integer :: member              ! counters
    real, save, allocatable :: ens_f_p(:,:) ! Store forecast ensemble for increment file writing (Ensemble mode)
-   character(len=3) :: forana           ! String indicating forecast or analysis
    logical, save :: first = .true. ! Flag for first call to this routine
 
 

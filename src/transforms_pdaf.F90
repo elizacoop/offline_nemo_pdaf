@@ -459,7 +459,7 @@ contains
             case(1)
                if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
                      'NEMO-PDAF', '--- revert log-10 transformation of ', trim(var)
-               state(off+1 : off+dim) = (10.D0**state(off+1 : off+dim))-shift
+               state(off+1 : off+dim) = (10._pwp**state(off+1 : off+dim))-shift
             case(2)
                if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
                      'NEMO-PDAF', '--- revert ln transformation of ', trim(var)

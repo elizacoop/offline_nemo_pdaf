@@ -115,8 +115,6 @@ contains
    !! to the standard output.
    SUBROUTINE print_pdaf_configuration()
       implicit none
-      ! *** Local variables ***
-      integer :: i
       ! *** Print configuration ***
       write (*, '(a,3x,a)') 'NEMO-PDAF','[pdaf_nml]:'
       write (*, '(a,5x,a,i10)') 'NEMO-PDAF','screen       ', screen

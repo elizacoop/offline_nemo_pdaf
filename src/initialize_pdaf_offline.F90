@@ -34,12 +34,12 @@ contains
 
       use mod_kind_pdaf
       use PDAF, only: PDAF_init, PDAF_set_iparam, PDAF_set_rparam
-      use parallel_pdaf, only: n_modeltasks, task_id, COMM_model, COMM_filter, &
+      use parallel_pdaf, only: task_id, COMM_model, COMM_filter, &
                                COMM_couple, mype_ens, filterpe, abort_parallel
       use config_pdaf, only: screen, step_null, filtertype, subtype, dim_ens, &
                              type_forget, forget, type_trans, type_sqrt, locweight
       use nemo_pdaf, only: set_nemo_grid
-      use statevector_pdaf, only: dim_state, dim_state_p, setup_statevector
+      use statevector_pdaf, only: dim_state_p, setup_statevector
       use utils_pdaf, only: init_info_pdaf
       use timer, only: timeit, time_temp
 

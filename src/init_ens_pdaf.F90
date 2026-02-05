@@ -40,15 +40,15 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
    if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from list of output files'
 
-   if (mype_filter==0 .and. member==1) then
-      verbose = screen
-   else
-      verbose = 0
-   end if
 
    do member = 1 , dim_ens
       call read_restart(member, ens_p(:, member))
       ! *** Transform fields
+      if (mype_filter==0 .and. member==1) then
+         verbose = screen
+      else
+         verbose = 0
+      end if
       call transform_field_mv(1, ens_p(:,member), 11, verbose)
    end do
 

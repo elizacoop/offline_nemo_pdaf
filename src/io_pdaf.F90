@@ -72,7 +72,6 @@ contains
       use parallel_pdaf, only: mype_model, npes_model, comm_model,MPIerr
       IMPLICIT NONE
       ! Local variables
-      integer :: w                ! domain index
       character(len=lc) :: fname ! file name
       character(len=lc) :: path_rst ! path to restart files
       INTEGER :: ncid             ! netCDF file identifier
@@ -135,6 +134,7 @@ contains
          call MPI_Barrier(comm_model, MPIerr)
          write (*,'(a,2x, a,i6,1x,2i7,2i7,2i7/)') 'NEMO-PDAF', 'RANK', mype_model, i0, i0+ni_p-1, j0, j0+nj_p-1, ni_p, nj_p
       end if
+      call MPI_Barrier(comm_model, MPIerr)
    END SUBROUTINE read_local_domain
 
    !> Read global domain information from restart files
@@ -146,19 +146,12 @@ contains
       use mod_memcount_pdaf, only: memcount
       use nemo_pdaf, only: jpiglo, jpjglo, jpk, i0, j0, ni_p, nj_p, nk_p, &
                            glamt, glamu, glamv, gphit, gphiu, gphiv, &
-                           gdept_1d, tmask
+                           nav_lev, tmask
       use parallel_pdaf, only: mype_model, npes_model, comm_model, MPIerr
       IMPLICIT NONE
       ! Local variables
       INTEGER :: ncid       ! netCDF file identifier
       INTEGER :: varid      ! variable identifier
-      INTEGER :: dimid_x    ! dimension id for x
-      INTEGER :: dimid_y    ! dimension id for y
-      INTEGER :: dimid_t    ! dimension id for t
-      INTEGER :: jpi_loc    ! local i-dimension
-      INTEGER :: jpj_loc    ! local j-dimension
-      INTEGER :: jpt_loc    ! local t-dimension
-      INTEGER :: ierr       ! error status
       INTEGER :: i, j, iktop, ikbot ! counter
       integer, allocatable :: k_top(:, :), k_bot(:, :) ! top and bottom wet levels
       !!----------------------------------------------------------------------
@@ -170,16 +163,16 @@ contains
       call add_slash(path_dom)
       ! Open the NetCDF file
       call check(nf90_open( trim(path_dom)//trim(fname_dom), NF90_NOWRITE, ncid ))
-      ! Read scalar variables (stored as scalars or 0D variables)
-      ! jpiglo
-      call check(nf90_inq_varid( ncid, 'jpiglo', varid ))
-      call check(nf90_get_var( ncid, varid, jpiglo ))
-      ! jpjglo
-      call check(nf90_inq_varid( ncid, 'jpjglo', varid ))
-      call check(nf90_get_var( ncid, varid, jpjglo ))
-      ! jpk
-      call check(nf90_inq_varid( ncid, 'jpkglo', varid ))
-      call check(nf90_get_var( ncid, varid, jpk ))
+      ! Read dimension sizes
+      ! jpiglo (x dimension)
+      call check(nf90_inq_dimid( ncid, 'x', varid ))
+      call check(nf90_inquire_dimension( ncid, varid, len=jpiglo ))
+      ! jpjglo (y dimension)
+      call check(nf90_inq_dimid( ncid, 'y', varid ))
+      call check(nf90_inquire_dimension( ncid, varid, len=jpjglo ))
+      ! jpk (z dimension)
+      call check(nf90_inq_dimid( ncid, 'nav_lev', varid ))
+      call check(nf90_inquire_dimension( ncid, varid, len=jpk ))
       nk_p = jpk
       ! Allocate arrays with dimensions (time, y, x)
       ALLOCATE( glamt(ni_p, nj_p) )
@@ -188,7 +181,7 @@ contains
       ALLOCATE( gphit(ni_p, nj_p) )
       ALLOCATE( gphiu(ni_p, nj_p) )
       ALLOCATE( gphiv(ni_p, nj_p) )
-      ALLOCATE( gdept_1d(nk_p) )
+      ALLOCATE( nav_lev(nk_p) )
       call memcount(1, 'r', 6*ni_p*nj_p + nk_p)
       ! Read 3D grid variables
       ! glamt
@@ -211,8 +204,8 @@ contains
       call check(nf90_inq_varid( ncid, 'gphiv', varid ))
       call check(nf90_get_var( ncid, varid, gphiv, [i0, j0, 1], [ni_p, nj_p, 1] ))
       ! gdept_1d
-      call check(nf90_inq_varid( ncid, 'gdept_1d', varid ))
-      call check(nf90_get_var( ncid, varid, gdept_1d) )
+      call check(nf90_inq_varid( ncid, 'nav_lev', varid ))
+      call check(nf90_get_var( ncid, varid, nav_lev) )
       ! calculate t_mask
       allocate( k_top(ni_p, nj_p) )
       allocate( k_bot(ni_p, nj_p) )
@@ -262,8 +255,8 @@ contains
    SUBROUTINE read_restart(ens_member, state_p)
       USE netcdf
       use mod_memcount_pdaf, only: memcount
-      use nemo_pdaf, only: i0, j0, ni_p, nj_p, nk_p
-      use parallel_pdaf, only: mype_model, npes_model, comm_model
+      use nemo_pdaf, only: ni_p, nj_p, nk_p
+      use parallel_pdaf, only: mype_model
       use statevector_pdaf, only: sfields, n_fields
       use transforms_pdaf, only: field2state
       IMPLICIT NONE
@@ -329,8 +322,8 @@ contains
       use netcdf
       use config_pdaf, only: screen
       use nemo_pdaf, only: ni_p, nj_p, nk_p, jpiglo, jpjglo, halo0, halo1, &
-                           i0, j0, nav_lat, nav_lon, time_counter, gdept_1d, ndastp
-      use parallel_pdaf, only: mype_model, npes_model, comm_model
+                           i0, j0, nav_lat, nav_lon, time_counter, nav_lev, ndastp
+      use parallel_pdaf, only: mype_model, npes_model
       use statevector_pdaf, only: n_fields, sfields
       use transforms_pdaf, only: state2field, transform_field_mv
       implicit none
@@ -347,7 +340,6 @@ contains
       integer :: id_lat, id_lon, id_lev, id_time, id_time_counter, id_incr, id_bkg
       integer :: startC(2), countC(2)
       integer :: startt(4), countt(4)
-      integer :: startz(1), countz(1)
       integer :: nf_prec      ! Precision for netcdf output of model fields
       integer :: verbose
       real(pwp) :: time
@@ -450,7 +442,7 @@ contains
 
       call check( nf90_put_var(ncid, id_lon, nav_lon, startC, countC))
       call check( nf90_put_var(ncid, id_lat, nav_lat, startC, countC))
-      call check( nf90_put_var(ncid, id_lev, gdept_1d, [1], [nk_p]))
+      call check( nf90_put_var(ncid, id_lev, nav_lev, [1], [nk_p]))
       call check( nf90_put_var(ncid, id_time_counter, time_counter, start=[1], count=[1]))
       ! keep all time attributes identical as NEMO assigns dateb=datef=time
       call check( nf90_put_var(ncid, id_time, time))

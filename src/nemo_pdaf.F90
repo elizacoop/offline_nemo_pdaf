@@ -25,7 +25,7 @@ module nemo_pdaf
 
    real(pwp), allocatable :: glamt(:,:), glamu(:,:), glamv(:,:)       ! Longitudes
    real(pwp), allocatable :: gphit(:,:), gphiu(:,:), gphiv(:,:)       ! Latitudes
-   real(pwp), allocatable :: gdept_1d(:)      ! Depths
+   real(4), allocatable :: nav_lev(:)      ! Depths
    real(4), allocatable   :: nav_lon(:,:), nav_lat(:,:)   ! Restart file grid
    real(pwp), allocatable :: tmask(:,:,:)     ! Temperature mask array
    ! wet points for state vectors

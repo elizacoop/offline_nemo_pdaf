@@ -99,7 +99,7 @@ contains
    subroutine init_dim_obs_ssh_mgrid(step, dim_obs)
       use PDAF, only: PDAFomi_gather_obs
       use statevector_pdaf, only: sfields
-      use nemo_pdaf, only: dim_2d_p, nwet, wet_pts, glamt, gphit
+      use nemo_pdaf, only: nwet, wet_pts, glamt, gphit
 
       integer, intent(in)    :: step    !< Current time step
       integer, intent(inout) :: dim_obs !< Dimension of full observation vector
@@ -131,7 +131,7 @@ contains
       ! *** and initialize index and coordinate arrays.         ***
       ! ***********************************************************
       ! Set number of local observations
-      dim_obs_p = dim_2d_p
+      dim_obs_p = nwet
       ! Vector of observations on the process sub-domain
       allocate (obs_p(dim_obs_p))
       ! Coordinate array of observations on the process sub-domain
@@ -148,6 +148,7 @@ contains
          ! Coordinates for observation operator (gridpoint)
          thisobs%id_obs_p(1, i) = i + sfields(id_sfields)%off
       end do
+      print *, thisobs%id_obs_p(1, 1), thisobs%id_obs_p(1, nwet)
       ! ****************************************************************
       ! *** Define observation errors for process-local observations ***
       ! ****************************************************************
