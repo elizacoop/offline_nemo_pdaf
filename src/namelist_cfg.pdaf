@@ -15,20 +15,21 @@
 &io_nml
   verbose_io = 2
   sgldbl_io = 'dbl'
-  path_dom = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/ens_1'
-  fname_dom = 'domain_cfg.nc'
+  path_dom = '/storage/research/nceo/ia923171/nemo/nemo_5.0.1/cfgs/UOR_ORCA2_ICE/ens_1'
+  fname_dom = 'ORCA_R2_zps_domcfg.nc'
   ! the parth to restart files is constructed by the following variables
   ! path_rst_root//ens_prefix[1-N]//path_rst_suffix//f_basename_rst_000x.nc
-  path_rst_root = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/'
+  path_rst_root = '/storage/research/nceo/ia923171/nemo/nemo_5.0.1/cfgs/UOR_ORCA2_ICE/'
   ! ensemble prefix
   ! ensemble numbers must be from 1 - N, it cannot have zero paddings.
   ens_prefix = 'ens_'
   ! rest of the path to restart files
-  path_rst_suffix = 'restarts'
-  f_basename_rst = 'amm7_ersem_pdaf_19930102_restart'
+  path_rst_suffix = '.'
+  f_basename_rst = 'ORCA2_00000072_restart'
   ! the parth to increment files is constructed by the following variables
-  ! path_incr_root/ens_prefix[1-N]/assim_background_increments_xxxx.nc
-  path_incr_root = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/'
+  ! path_asm_root//ens_prefix[1-N]/assim_background_increments_xxxx.nc
+  ! path_asm_root//ens_prefix[1-N]/assim_background_state_DI_xxxx.nc
+  path_asm_root = '/storage/research/nceo/ia923171/nemo/nemo_5.0.1/cfgs/UOR_ORCA2_ICE/'
   ! initial time of day in hhmm
   nn_time0 = 0
 /
@@ -44,7 +45,7 @@
   sfields(1)%name_incr = 'bckint'
   sfields(1)%name_rest_n = 'tn'
   sfields(1)%name_rest_b = 'tb'
-  sfields(1)%rst_file = 'amm7_ersem_pdaf_19930102_restart'
+  sfields(1)%rst_file = 'ORCA2_00000072_restart'
   sfields(1)%unit = 'degC'
 
   sfields(2)%ndims = 3
@@ -52,7 +53,7 @@
   sfields(2)%name_incr = 'bckins'
   sfields(2)%name_rest_n = 'sn'
   sfields(2)%name_rest_b = 'sb'
-  sfields(2)%rst_file = 'amm7_ersem_pdaf_19930102_restart'
+  sfields(2)%rst_file = 'ORCA2_00000072_restart'
   sfields(2)%unit = 'psu'
   sfields(2)%transform = 0
   sfields(2)%trafo_shift = 0.0
@@ -63,6 +64,7 @@
 &mgrid_ssh_nml
   assim_ssh_mgrid = .true.
   use_global_obs = 1
+  ! this is the index of obs. in sfields for fake obs.
   id_sfields = 1
   rms = 0.5
   lradius = 20000

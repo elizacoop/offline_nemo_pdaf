@@ -27,11 +27,12 @@
 !!
 subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
      state_p, Uinv, ens_p, flag)
+   use config_pdaf, only: screen
    use mod_memcount_pdaf, only: memcount
    use mod_kind_pdaf
-   use io_pdaf, only: write_increment_mv
+   use io_pdaf, only: write_asmdin_mv, write_asminc_mv
    use parallel_pdaf, only: mype=>mype_filter
-
+   use transforms_pdaf, only: transform_field_mv
    implicit none
 
    ! *** Arguments ***
@@ -49,6 +50,7 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
 
    ! *** local variables ***
    integer :: member              ! counters
+   integer :: verbose             ! control verbosity of transform_field_mv
    real, save, allocatable :: ens_f_p(:,:) ! Store forecast ensemble for increment file writing (Ensemble mode)
    logical, save :: first = .true. ! Flag for first call to this routine
 
@@ -63,6 +65,15 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
       allocate(ens_f_p(dim_p, dim_ens))
       ens_f_p = ens_p
       call memcount(2, 'r', dim_p*dim_ens)
+      ! *** Transform fields
+      do member = 1 , dim_ens
+         if (mype==0 .and. member==1) then
+            verbose = screen
+         else
+            verbose = 0
+         end if
+         call transform_field_mv(1, ens_p(:,member), 11, verbose)
+      end do
       first = .false.
    else
       if (mype==0) write (*,'(a, 5x,a)') 'NEMO-PDAF', 'Analyze assimilated state ensemble'
@@ -71,7 +82,8 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
       do member = 1, dim_ens
          ! Store member of analysis ensemble
          state_p = ens_p(:,member)
-         call write_increment_mv(member, state_p, ens_f_p(:,member))
+         call write_asmdin_mv(member, ens_f_p(:,member))
+         call write_asminc_mv(member, state_p, ens_f_p(:,member))
       end do
       deallocate(ens_f_p)
    end if

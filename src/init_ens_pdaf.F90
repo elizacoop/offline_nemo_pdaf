@@ -15,10 +15,8 @@
 subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
    use mod_kind_pdaf
-   use config_pdaf, only: screen
    use io_pdaf, only: read_restart
    use parallel_pdaf, only: mype_filter
-   use transforms_pdaf, only: transform_field_mv
    implicit none
    ! *** Arguments ***
    integer, intent(in) :: filtertype                     !< Type of filter to initialize
@@ -34,7 +32,6 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
    ! *** Local variables ***
    integer :: i, member              ! Counters
    real(pwp) :: inv_dim_ens          ! Inverse ensemble size
-   integer :: verbose                ! Control verbosity
 
    ! Read restart ensemble files
 
@@ -43,13 +40,6 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
 
    do member = 1 , dim_ens
       call read_restart(member, ens_p(:, member))
-      ! *** Transform fields
-      if (mype_filter==0 .and. member==1) then
-         verbose = screen
-      else
-         verbose = 0
-      end if
-      call transform_field_mv(1, ens_p(:,member), 11, verbose)
    end do
 
    inv_dim_ens = 1.0_pwp/real(dim_ens, kind=pwp)
