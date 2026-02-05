@@ -336,7 +336,7 @@ contains
       integer :: dimids_field(4)
       integer :: i
       integer :: dimid_time, dimid_lvls, dimid_lat, dimid_lon
-      integer :: id_dateb, id_datef
+      integer :: id_dateb, id_datef, id_rdastp
       integer :: id_lat, id_lon, id_lev, id_time, id_time_counter, id_incr, id_bkg
       integer :: startC(2), countC(2)
       integer :: startt(4), countt(4)
@@ -404,6 +404,7 @@ contains
       call check( NF90_DEF_VAR(ncid, 'time', NF90_DOUBLE, id_time))
       call check( NF90_DEF_VAR(ncid, 'z_inc_dateb', NF90_DOUBLE, id_dateb))
       call check( NF90_DEF_VAR(ncid, 'z_inc_datef', NF90_DOUBLE, id_datef))
+      call check( NF90_DEF_VAR(ncid, 'rdastp', NF90_DOUBLE, id_rdastp))
       call check( NF90_DEF_VAR(ncid, 'time_counter', NF90_DOUBLE, id_time_counter))
       call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
       call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
@@ -448,6 +449,7 @@ contains
       call check( nf90_put_var(ncid, id_time, time))
       call check( nf90_put_var(ncid, id_dateb, time))
       call check( nf90_put_var(ncid, id_datef, time))
+      call check( nf90_put_var(ncid, id_rdastp, ndastp))
       ! *** Write fields
       ! Backwards transformation of state fields
       if (mype_model==0) then
