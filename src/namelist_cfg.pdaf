@@ -26,10 +26,16 @@
   ! rest of the path to restart files
   path_rst_suffix = 'restarts'
   f_basename_rst = 'amm7_ersem_pdaf_19930102_restart'
+  ! the parth to increment files is constructed by the following variables
+  ! path_incr_root/ens_prefix[1-N]/assim_background_increments_xxxx.nc
+  path_incr_root = '/work/n01/n01/ymchen/ersem/ersem-pdaf/run/exp_test/'
+  ! initial time of day in hhmm
+  nn_time0 = 0
 /
 
 &sv_nml
   n_fields=2
+  use_wet_state = 2
 /
 
 &sfields_nml
@@ -52,4 +58,14 @@
   sfields(2)%trafo_shift = 0.0
   sfields(2)%limit = 0
   sfields(2)%min_limit = 0.000001
+/
+
+&mgrid_ssh_nml
+  assim_ssh_mgrid = .true.
+  use_global_obs = 1
+  id_sfields = 1
+  rms = 0.5
+  lradius = 20000
+  sradius = 20000
+  noise_amp = 0.5
 /

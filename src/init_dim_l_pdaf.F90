@@ -15,9 +15,9 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
    use mod_kind_pdaf
    use PDAF, only: PDAFlocal_set_indices
    use assimilation_pdaf, only: domain_coords, id_lstate_in_pstate
-   use statevector_pdaf, only: n_fields, sfields, sfields_l, dim_state_p
    use nemo_pdaf, only: nav_lon, nav_lat, nwet, wet_pts, &
                         sdim2d, deg2rad, use_wet_state
+   use statevector_pdaf, only: n_fields, sfields, sfields_l, dim_state_p
    implicit none
    ! *** Arguments ***
    integer, intent(in)  :: step     !< Current time step

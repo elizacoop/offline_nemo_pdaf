@@ -8,11 +8,11 @@
 !! - 2022-05 Lars Nerger, initial version based on PDAF offline code
 !!
 program MAIN
-   use parallel_pdaf, &        ! Parallelization
-         only: npes_world, mype_world, &
-               init_parallel, finalize_parallel, init_parallel_pdaf
+   use parallel_pdaf, only: npes_world, mype_world, &
+                            init_parallel, init_parallel_pdaf, finalize_parallel
    use mod_memcount_pdaf, only: memcount_ini, memcount_get
    use timer, only: timeit, time_tot
+   use config_pdaf, only: screen
    use assimilation_pdaf, only: assimilate_pdaf
    use utils_pdaf, only: read_config_pdaf, print_config
    use initialize_offline, only: initialize
@@ -43,7 +43,7 @@ program MAIN
    call read_config_pdaf()
    ! *** Initialize MPI communicators for PDAF (model and filter) ***
    ! *** NOTE: It is always n_modeltasks=1 for offline mode       ***
-   call init_parallel_pdaf()
+   call init_parallel_pdaf(screen)
    call print_config()
    ! *** Initialize model information ***
    call initialize()
@@ -53,7 +53,7 @@ program MAIN
    ! *** Initialize PDAF ***
    call init_pdaf()
    ! ! *** Perform analysis ***
-   ! call assimilate_pdaf()
+   call assimilate_pdaf()
    ! ! ********************
    ! ! *** Finishing up ***
    ! ! ********************

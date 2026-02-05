@@ -17,21 +17,21 @@ module nemo_pdaf
 
    ! *** NEMO domain variables ***
    integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
+   integer :: halo0(2), halo1(2)         ! The halo information for restart files
+   integer :: time_counter(1)            ! Time counter from restart file
+   integer  :: nn_time0                 ! initial time of day in hhmm
+   real(pwp) :: ndastp                   ! NEMO time string
+                                         ! spcified in NEMO namelist namrun
 
    real(pwp), allocatable :: glamt(:,:), glamu(:,:), glamv(:,:)       ! Longitudes
    real(pwp), allocatable :: gphit(:,:), gphiu(:,:), gphiv(:,:)       ! Latitudes
    real(pwp), allocatable :: gdept_1d(:)      ! Depths
-   real(pwp), allocatable :: nav_lon(:,:), nav_lat(:,:)   ! Restart file grid
+   real(4), allocatable   :: nav_lon(:,:), nav_lat(:,:)   ! Restart file grid
    real(pwp), allocatable :: tmask(:,:,:)     ! Temperature mask array
-
-   ! *** NEMO model variables - time stepping
-   integer                :: ndastp
-
-   ! *** Other grid variables
-   real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
-   real(4),   allocatable :: stmp_4d(:,:,:,:)    ! 4D array used to represent full NEMO grid box
-
-   integer :: dim_2d                        ! Dimension of 2d grid box
+   ! wet points for state vectors
+   integer :: use_wet_state=0               ! 1: State vector contains full columns where surface grid point is wet
+                                            ! 2: State vector only contains wet grid points
+                                            ! other: State vector contains 2d/3d grid box
    integer :: nwet                          ! Number of surface wet grid points
    integer :: nwet3d                        ! Number of 3d wet grid points
    integer, allocatable :: wet_pts(:,:)     ! Index array for wet grid points
@@ -45,10 +45,6 @@ module nemo_pdaf
    integer, allocatable :: idx_wet_2d(:,:)  ! Index array for wet_pts row index in 2d box
    integer, allocatable :: idx_nwet(:,:)    ! Index array for wet_pts row index in wet surface grid points
    integer, allocatable :: nlev_wet_2d(:,:) ! Number of wet layers for ij position in 2d box
-
-   integer :: use_wet_state=0               ! 1: State vector contains full columns where surface grid point is wet
-                                            ! 2: State vector only contains wet grid points
-                                            ! other: State vector contains 2d/3d grid box
 
    integer :: ni_p, nj_p, nk_p               ! Size of decomposed grid
    integer :: i0, j0                         ! Start indices for internal local domain
@@ -66,14 +62,13 @@ contains
    !! In particular index information is initialize to map in between
    !! the model grid and the state vector
    !!
-   subroutine set_nemo_grid(screen)
+   subroutine set_nemo_grid()
+      use PDAF, only: PDAFomi_set_domain_limits
+      use config_pdaf, only: screen
       use mod_kind_pdaf
       use parallel_pdaf, only: mype_model, npes_model, comm_model, &
                                MPI_INT, MPI_SUM, MPIerr
-      use PDAF, only: PDAFomi_set_domain_limits
       implicit none
-      ! *** Argument ***
-      integer, intent(in) :: screen         ! Control verbosity
       ! *** Local variables ***
       integer :: i, j, k                    ! Counters
       integer :: cnt, cnt_all, cnt_layers   ! Counters

@@ -15,8 +15,9 @@
 subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
      ens_p, flag)
    use mod_kind_pdaf
-   use parallel_pdaf, only: mype_filter
+   use config_pdaf, only: screen
    use io_pdaf, only: read_restart
+   use parallel_pdaf, only: mype_filter
    use transforms_pdaf, only: transform_field_mv
    implicit none
    ! *** Arguments ***
@@ -35,15 +36,12 @@ subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
    real(pwp) :: inv_dim_ens          ! Inverse ensemble size
    integer :: verbose                ! Control verbosity
 
-   ! ************************************
-   ! *** Generate ensemble from files ***
-   ! ************************************
-   ! Read ensemble states as model snapshots from separate files
+   ! Read restart ensemble files
 
    if (mype_filter==0) write (*,'(a,1x,a)') 'NEMO-PDAF', 'Initialize ensemble from list of output files'
 
    if (mype_filter==0 .and. member==1) then
-      verbose = 1
+      verbose = screen
    else
       verbose = 0
    end if

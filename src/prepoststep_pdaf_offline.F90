@@ -27,24 +27,10 @@
 !!
 subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
      state_p, Uinv, ens_p, flag)
-
-   use mpi
+   use mod_memcount_pdaf, only: memcount
    use mod_kind_pdaf
-   use assimilation_pdaf, &
-         only: ens_restart, coupling_nemo
-   use parallel_pdaf, &
-         only: mype=>mype_filter, comm_filter, MPIerr
-   use statevector_pdaf, &
-         only: n_fields, sfields
-   use io_pdaf, &
-         only: save_state, save_var, save_ens_sngl, &
-         file_out_state, file_out_variance, file_out_incr, save_incr, &
-         write_field_mv, write_field_sngl, ids_write, &
-         read_state_mv, update_restart_mv, write_increment_mv
-   use nemo_pdaf, &
-         only: ndastp, calc_date
-   use mod_memcount_pdaf, &
-         only: memcount
+   use io_pdaf, only: write_increment_mv
+   use parallel_pdaf, only: mype=>mype_filter, comm_filter, MPIerr
 
    implicit none
 
@@ -65,57 +51,29 @@ subroutine prepoststep_pdaf(step, dim_p, dim_ens, dim_ens_p, dim_obs_p, &
    integer :: member              ! counters
    real, save, allocatable :: ens_f_p(:,:) ! Store forecast ensemble for increment file writing (Ensemble mode)
    character(len=3) :: forana           ! String indicating forecast or analysis
-   character(len=3) :: ensstr           ! Ensemble ID as string
-   integer, allocatable :: dimfield_p(:) ! Local field dimensions
-   integer, allocatable :: dimfield(:)  ! Global field dimensions
-   real, allocatable :: rmse_est_p(:)   ! PE-local estimated RMS errors (ensemble standard deviations)
-   real, allocatable :: rmse_est(:)     ! Global estimated RMS errors (ensemble standard deviations)
+   logical, save :: first = .true. ! Flag for first call to this routine
 
 
    ! **********************
-   ! *** INITIALIZATION ***
+   ! *** output increment files ***
    ! **********************
-
-   if (step>0) then
-      if (mype==0) write (*,'(a, 5x,a)') 'NEMO-PDAF', 'Analyze assimilated state ensemble'
-      forana = 'ana'
-   else
+   if (first) then
       if (mype==0) write (*,'(a, 5x,a)') 'NEMO-PDAF', 'Analyze forecast state ensemble'
-      forana = 'for'
-   end if
-
-   ! *************************************************************************
-   ! *** File output for offline mode: increments or updated restart files ***
-   ! *************************************************************************
-
-   if (forana == 'for') then
-
       ! For using NEMO's asminc module in offline mode: store forecast
       ! Store full forecast ensemble
       allocate(ens_f_p(dim_p, dim_ens))
       ens_f_p = ens_p
       call memcount(2, 'r', dim_p*dim_ens)
-
+      first = .false.
    else
+      if (mype==0) write (*,'(a, 5x,a)') 'NEMO-PDAF', 'Analyze assimilated state ensemble'
       ! Ensemble KF - store an ensemble of increment files
       if (mype == 0) write (*,'(a,5x,a)') 'NEMO-PDAF', '--- Write ensemble of increments'
-      do iens = 1, dim_ens
-         write(ensstr,'(i3.3)') iens
+      do member = 1, dim_ens
          ! Store member of analysis ensemble
-         state_tmp = ens_p(:,iens)
-         call write_increment_mv(state_tmp, ens_f_p(:,iens), &
-               trim(file_out_incr)//'_'//trim(ndastp_str)//'_'//ensstr//'.nc', &
-               rdate, nsteps, 1, 1)
+         state_p = ens_p(:,member)
+         call write_increment_mv(member, state_p, ens_f_p(:,member))
       end do
       deallocate(ens_f_p)
    end if
-
-
-
-   ! ********************
-   ! *** finishing up ***
-   ! ********************
-
-   deallocate(state_tmp)
-
 end subroutine prepoststep_pdaf

@@ -107,29 +107,25 @@ module config_pdaf
                      !<   * (1) Cholesky decomposition
 
    namelist /pdaf_nml/ screen, dim_ens, filtertype, subtype, &
-                     type_trans, type_sqrt, type_forget, forget, locweight
+                       type_trans, type_sqrt, type_forget, forget, locweight
 
 contains
    !> Print Assimilation Configuration
    !! This routine prints the assimilation configuration
    !! to the standard output.
    SUBROUTINE print_pdaf_configuration()
-      use parallel_pdaf, only: mype_ens
       implicit none
       ! *** Local variables ***
       integer :: i
       ! *** Print configuration ***
-      if (mype_ens == 0) then
-         write (*, '(a,3x,a)') 'NEMO-PDAF','[pdaf_nml]:'
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','screen       ', screen
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','filtertype   ', filtertype
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','subtype      ', subtype
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_trans   ', type_trans
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_sqrt    ', type_sqrt
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_forget  ', type_forget
-         write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
-         write (*, '(a,5x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
-
-      end if
+      write (*, '(a,3x,a)') 'NEMO-PDAF','[pdaf_nml]:'
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','screen       ', screen
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','filtertype   ', filtertype
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','subtype      ', subtype
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_trans   ', type_trans
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_sqrt    ', type_sqrt
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','type_forget  ', type_forget
+      write (*, '(a,5x,a,f10.3)') 'NEMO-PDAF','forget       ', forget
+      write (*, '(a,5x,a,i10)') 'NEMO-PDAF','locweight    ', locweight
    end SUBROUTINE print_pdaf_configuration
 end module config_pdaf

@@ -64,7 +64,6 @@ module statevector_pdaf
 !$OMP THREADPRIVATE(sfields_l)
 
 contains
-
    !> This initializes the array sfields
    !!
    !! This routine initializes the sfields array with specifications
@@ -150,15 +149,13 @@ contains
    !! This routine is generic. case-specific adaptions should only
    !! by done in the routines init_id and init_sfields.
    !!
-   subroutine setup_statevector(screen)
-
+   subroutine setup_statevector()
+      use config_pdaf, only: screen
       use mod_kind_pdaf
       use parallel_pdaf, &
             only: mype=>mype_ens, npes=>npes_ens, task_id, comm_ensemble, &
             comm_model, MPI_SUM, MPI_INTEGER, MPIerr
       implicit none
-      ! *** Arguments ***
-      integer, intent(in) :: screen         !< Verbosity level for screen output
       ! *** Local variables ***
       integer :: i                 ! Counters
       ! ***********************************

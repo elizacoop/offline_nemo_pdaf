@@ -50,11 +50,11 @@ contains
    !-------------------------------------------------------------------------------
    !> Initialize MPI communicators for PDAF
    !!
-   subroutine init_parallel_pdaf()
+   subroutine init_parallel_pdaf(screen)
       use PDAF, only: PDAF3_set_parallel
       use timer, only: timeit
-      use config_pdaf, only: screen
-
+      implicit none
+      integer, intent(in) :: screen ! Control verbosity of PDAF (see config_pdaf)
       integer :: i, j                   !< Counters
       integer :: pe_index               !< Index of PE
       integer :: my_color, color_couple !< Variables for communicator-splitting

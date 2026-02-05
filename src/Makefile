@@ -37,14 +37,15 @@ EXE = PDAF_offline
 # Modules used for the model part
 MODULES =	timer.o \
 		mod_memcount_pdaf.o \
-		mod_kind_pdaf.o
+		mod_kind_pdaf.o \
+		config_pdaf.o
 
 
 # Objects specific for offline mode
 OBJ_OFFLINE = 	assimilation_pdaf_offline.o \
 		initialize_offline.o \
 		initialize_pdaf_offline.o \
-		main_offline.o \
+		main.o \
 		prepoststep_pdaf_offline.o
 
 # Files that are identical in online and offline mode
@@ -52,7 +53,6 @@ OBJ_PDAF_USER =	callback_obs_pdafomi.o \
 		init_dim_l_pdaf.o \
 		init_n_domains_pdaf.o \
 		io_pdaf.o \
-		sample_ens_pdaf.o \
 		statevector_pdaf.o \
 		transforms_pdaf.o \
 		obs_ssh_mgrid_pdafomi.o
@@ -62,20 +62,13 @@ OBJ_DIFF_CPP = 	init_ens_pdaf.o \
 		nemo_pdaf.o \
 		parallel_pdaf.o \
 		utils_pdaf.o
-OBJ = $(MODULES) parallel_pdaf.o statevector_pdaf.o assimilation_pdaf_offline.o  io_pdaf.o utils_pdaf.o nemo_pdaf.o transforms_pdaf.o initialize_offline.o init_ens_pdaf.o initialize_pdaf_offline.o main.o
 
 ######################################################
 
-# $(EXE) : libpdaf-d.a \
-# 	$(MODULES) $(OBJ_OFFLINE) $(OBJ_PDAF_USER) $(OBJ_DIFF_CPP) $(OBJ_MPI)
-# 	$(LD)  $(OPT_LNK) $(NC_LIB) -o $@  \
-# 	$(MODULES) $(OBJ_OFFLINE) $(OBJ_PDAF_USER) $(OBJ_DIFF_CPP) $(OBJ_MPI) \
-# 	-L$(BASEDIR)/lib -lpdaf-d \
-# 	$(LINK_LIBS)
-# 	@echo "++++++ Done ++++++"
-
-$(EXE) : libpdaf-d.a  $(OBJ) $(OBJ_MPI)
-	$(LD)  $(OPT_LNK) $(NC_LIB) -o $@  $(OBJ) $(OBJ_MPI) \
+$(EXE) : libpdaf-d.a \
+	$(MODULES) $(OBJ_OFFLINE) $(OBJ_PDAF_USER) $(OBJ_DIFF_CPP) $(OBJ_MPI)
+	$(LD)  $(OPT_LNK) $(NC_LIB) -o $@  \
+	$(MODULES) $(OBJ_OFFLINE) $(OBJ_PDAF_USER) $(OBJ_DIFF_CPP) $(OBJ_MPI) \
 	-L$(BASEDIR)/lib -lpdaf-d \
 	$(LINK_LIBS)
 	@echo "++++++ Done ++++++"
@@ -114,12 +107,12 @@ cleanpdaf:
 
 # Some necessary dependencies to ensure that the program compiles
 
-# assimilation_pdaf_offline.o: parallel_pdaf.o
-# callback_obs_pdafomi.o: obs_ssh_mgrid_pdafomi.o obs_sst_cmems_pdafomi.o
+assimilation_pdaf_offline.o: parallel_pdaf.o
+callback_obs_pdafomi.o: obs_ssh_mgrid_pdafomi.o # obs_sst_cmems_pdafomi.o
 initialize_offline.o: nemo_pdaf.o io_pdaf.o
-# initialize_pdaf_offline.o: utils_pdaf.o
+initialize_pdaf_offline.o: utils_pdaf.o config_pdaf.o
 io_pdaf.o: statevector_pdaf.o transforms_pdaf.o
-# utils_pdaf.o: obs_ssh_mgrid_pdafomi.o # obs_sst_cmems_pdafomi.o
+utils_pdaf.o: obs_ssh_mgrid_pdafomi.o # obs_sst_cmems_pdafomi.o
 statevector_pdaf.o: nemo_pdaf.o parallel_pdaf.o
-# obs_ssh_mgrid_pdafomi.o: io_pdaf.o statevector_pdaf.o parallel_pdaf.o nemo_pdaf.o assimilation_pdaf_offline.o
+obs_ssh_mgrid_pdafomi.o: io_pdaf.o statevector_pdaf.o parallel_pdaf.o nemo_pdaf.o assimilation_pdaf_offline.o
 # obs_sst_cmems_pdafomi.o: io_pdaf.o statevector_pdaf.o parallel_pdaf.o nemo_pdaf.o assimilation_pdaf_offline.o

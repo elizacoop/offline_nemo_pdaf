@@ -73,9 +73,9 @@ contains
       ! *** Specify state vector and state dimension ***
       ! ************************************************
       ! Initialize dimension information for NEMO grid
-      call set_nemo_grid(screen)
+      call set_nemo_grid()
       ! Setup state vector
-      call setup_statevector(screen)
+      call setup_statevector()
       ! *****************************************************
       ! *** Call PDAF initialization routine on all PEs.  ***
       ! *****************************************************

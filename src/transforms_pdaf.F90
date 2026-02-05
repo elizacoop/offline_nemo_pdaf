@@ -26,16 +26,8 @@ module transforms_pdaf
   interface state2field
     module procedure state2field_2d
     module procedure state2field_3d
-    module procedure state2field_4d_dbl
-    module procedure state2field_4d_sgl
-    module procedure state2field_4d_dbl_mask
-    module procedure state2field_4d_sgl_mask
+    module procedure state2field_4d
   end interface state2field
-
-  interface state2field_inc
-     module procedure state2field_inc_2d
-     module procedure state2field_inc_3d
-  end interface
 
 contains
    !============================================================================
@@ -190,7 +182,7 @@ contains
    !============================================================================
    !> Convert from state vector to NEMO model field
    !!
-   subroutine state2field_4d_dbl(state, field, offset, ndims)
+   subroutine state2field_4d(state, field, offset, ndims)
       implicit none
       ! *** Arguments ***
       real(pwp), intent(in)    :: state(:)         !< State vector
@@ -247,549 +239,122 @@ contains
          enddo
       end if
 
-   end subroutine state2field_4d_dbl
-!==============================================================================
+   end subroutine state2field_4d
+   !==============================================================================
 
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_4d_sgl(state, field, offset, ndims)
+   !> Convert from state vector to NEMO model field
+   !!
+   subroutine state2field_3d(state, field, offset, ndims)
 
-    implicit none
+      implicit none
 
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(4), intent(out)     :: field(:,:,:,:)   !< Model field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
+      ! *** Arguments ***
+      real(pwp), intent(in)    :: state(:)         !< State vector
+      real(pwp), intent(out)   :: field(:,:,:)     !< Model field
+      integer,   intent(in)    :: offset           !< Offset in state vector
+      integer,   intent(in)    :: ndims            !< Number of dimensions in field
 
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
+      ! *** Local variables ***
+      integer :: i, j, k
+      integer :: cnt
+      integer :: n_levels
 
 
-! *** Initialize model field from state vector
+      ! *** Set number of model layers ***
+      if (ndims == 3) then
+         n_levels = nlvls
+      else
+         n_levels = 1
+      end if
 
-    if (use_wet_state==1) then
 
-       do k = 1, nlvls
+      ! *** Initialize model field from state vector
+
+      if (use_wet_state==1) then
+
+         do k = 1, nlvls
 !$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt)
-          end do
+            do i = 1, nwet
+               cnt = i + nwet*(k-1) + offset
+               field(wet_pts(6, i), wet_pts(7, i), k) = state(cnt)
+            end do
 !$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt + k)
-             end do
-!!!!$OMP END PARALLEL DO
-          end do
-
-       else
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             field(wet_pts(6, i), wet_pts(7, i), 1, 1) = state(cnt)
-!!!!$OMP END PARALLEL DO
-          end do
-
-       end if
-    else
-
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1, nj_p
-             do i = 1, ni_p
-!                if (tmask(i + i0, j + j0, k) == 1.0_pwp) then
-                   field(i,j,k,1) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
-!                end if
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-
-    end if
-
-  end subroutine state2field_4d_sgl
-
-!==============================================================================
-
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_4d_dbl_mask(state, field, offset, ndims, mask)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(pwp), intent(out)   :: field(:,:,:,:)   !< Model field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-    real(pwp), intent(in)    :: mask(:,:,:)      !< Land mask
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize model field from state vector
-
-    if (use_wet_state==1) then
-
-       do k = 1, nlvls
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt)
-          end do
-!$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt + k)
-             end do
-!!!!$OMP END PARALLEL DO
-          end do
-
-       else
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             field(wet_pts(6, i), wet_pts(7, i), 1, 1) = state(cnt)
-!!!!$OMP END PARALLEL DO
-          end do
-
-       end if
-    else
-
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1, nj_p
-             do i = 1, ni_p
-                if (mask(i + i0, j + j0, k) == 1.0_pwp) then
-                   field(i,j,k,1) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
-                end if
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-
-    end if
-
-  end subroutine state2field_4d_dbl_mask
-!==============================================================================
-
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_4d_sgl_mask(state, field, offset, ndims, mask)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(4), intent(out)     :: field(:,:,:,:)   !< Model field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-    real(pwp), intent(in)    :: mask(:,:,:)      !< Land mask
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize model field from state vector
-
-    if (use_wet_state==1) then
-
-       do k = 1, nlvls
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt)
-          end do
-!$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                field(wet_pts(6, i), wet_pts(7, i), k, 1) = state(cnt + k)
-             end do
-!!!!$OMP END PARALLEL DO
-          end do
-
-       else
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             field(wet_pts(6, i), wet_pts(7, i), 1, 1) = state(cnt)
-!!!!$OMP END PARALLEL DO
-          end do
-
-       end if
-    else
-
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1, nj_p
-             do i = 1, ni_p
-                if (mask(i + i0, j + j0, k) == 1.0_pwp) then
-                   field(i,j,k,1) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
-                end if
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-
-    end if
-
-  end subroutine state2field_4d_sgl_mask
-!==============================================================================
-
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_3d(state, field, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(pwp), intent(out)   :: field(:,:,:)     !< Model field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize model field from state vector
-
-    if (use_wet_state==1) then
-
-       do k = 1, nlvls
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             field(wet_pts(6, i), wet_pts(7, i), k) = state(cnt)
-          end do
-!$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                field(wet_pts(6, i), wet_pts(7, i), k) = state(cnt + k)
-             end do
-!!!!$OMP END PARALLEL DO
-          end do
-
-       else
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             field(wet_pts(6, i), wet_pts(7, i), 1) = state(cnt)
-!!!!$OMP END PARALLEL DO
-          end do
-
-       end if
-    else
-
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1, nj_p
-             do i = 1, ni_p
-                field(i,j,k) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-
-    end if
-
-  end subroutine state2field_3d
-!==============================================================================
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_2d(state, field, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(pwp), intent(out)   :: field(:,:)       !< Model field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j
-    integer :: cnt
-
-
-! *** Initialize model field from state vector
-
-    if ((use_wet_state==1) .or. (use_wet_state==2)) then
-       do i = 1, nwet
-          cnt = i + offset
-          field(wet_pts(6, i), wet_pts(7, i)) = state(cnt)
-       end do
-    else
-       cnt = 1 + offset
-       do j = 1, nj_p
-          do i = 1, ni_p
-                field(i,j) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
-             cnt = cnt + 1
-          enddo
-       enddo
-    end if
-
-  end subroutine state2field_2d
-!==============================================================================
-
-!> Convert from state vector to NEMO model increment field
-!!
-  subroutine state2field_inc_3d(state, field, inc, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(pwp), intent(in)    :: field(:,:,:)     !< Model field
-    real(pwp), intent(inout) :: inc(:,:,:)       !< Increment field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j, k
-    integer :: cnt
-    integer :: n_levels
-
-
-! *** Set number of model layers ***
-    if (ndims == 3) then
-       n_levels = nlvls
-    else
-       n_levels = 1
-    end if
-
-
-! *** Initialize model field from state vector
-
-    if (use_wet_state==1) then
-
-       do k = 1, nlvls
-!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = i + nwet*(k-1) + offset
-             inc(wet_pts(6, i), wet_pts(7, i), k) &
-                  = state(cnt) - field(wet_pts(6, i), wet_pts(7, i), k)
-          end do
-!$OMP END PARALLEL DO
-       end do
-
-    elseif (use_wet_state==2) then
-
-       if (ndims == 3) then
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = wet_pts(5,i) - 1 + offset
-             do k = 1, wet_pts(3,i)
-                inc(wet_pts(6, i), wet_pts(7, i), k) &
-                     = state(cnt + k) - field(wet_pts(6, i), wet_pts(7, i), k)
-             end do
-!!!!$OMP END PARALLEL DO
-          end do
-
-       else
-
-!!!!$OMP PARALLEL DO PRIVATE (i, cnt)
-          do i = 1, nwet
-             cnt = offset + i
-             inc(wet_pts(6, i), wet_pts(7, i), 1) &
-                  = state(cnt) - field(wet_pts(6, i), wet_pts(7, i), 1)
-!!!!$OMP END PARALLEL DO
-          end do
-
-       end if
-    else
-
-       cnt = 1 + offset
-       do k = 1, n_levels
-          do j = 1, nj_p
-             do i = 1, ni_p
-                inc(i,j,k) = state(cnt) - field(i,j,k)
-                cnt = cnt + 1
-             enddo
-          enddo
-       enddo
-
-    end if
-
-  end subroutine state2field_inc_3d
-!==============================================================================
-!> Convert from state vector to NEMO model field
-!!
-  subroutine state2field_inc_2d(state, field, inc, offset, ndims)
-
-    implicit none
-
-! *** Arguments ***
-    real(pwp), intent(in)    :: state(:)         !< State vector
-    real(pwp), intent(in)    :: field(:,:)       !< Model field
-    real(pwp), intent(inout) :: inc(:,:)         !< Increment field
-    integer,   intent(in)    :: offset           !< Offset in state vector
-    integer,   intent(in)    :: ndims            !< Number of dimensions in field
-
-! *** Local variables ***
-    integer :: i, j
-    integer :: cnt
-
-
-! *** Initialize model field from state vector
-
-    if ((use_wet_state==1) .or. (use_wet_state==2)) then
-       do i = 1, nwet
-          cnt = i + offset
-          inc(wet_pts(6, i), wet_pts(7, i)) = state(cnt) - field(wet_pts(6, i), wet_pts(7, i))
-       end do
-    else
-       cnt = 1 + offset
-       do j = 1, nj_p
-          do i = 1, ni_p
-             inc(i,j) = state(cnt) - field(i,j)
-             cnt = cnt + 1
-          enddo
-       enddo
-    end if
-
-  end subroutine state2field_inc_2d
-!==============================================================================
-!> Transform field, e.g. to log and back
-!!
-  subroutine transform_field(type, trafo, shift, state, dim, off, var, verbose)
-
-    implicit none
-
-    integer,         intent(in)    :: type     !< Direction transformation
-    integer,         intent(in)    :: trafo    !< Type of transformation
-    real(pwp),       intent(in)    :: shift    !< constant for shifting value in transformation
-    real(pwp),       intent(inout) :: state(:) !< State vector
-    integer,         intent(in)    :: dim      !< dimension of field in state vector
-    integer,         intent(in)    :: off      !< Offset of field in state vector
-    character(len=*),intent(in)    :: var      !< Name of variable
-    integer,         intent(in)    :: verbose  !< (1) to write screen output
-
-
-    if (type==1) then
-       ! Transformation from NEMO value to transformed value
-
-       select case (trafo)
-       case(0)
-!          write(*,*) 'No Transformation of variable ', trim(var)
-       case(1)
-          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-               'NEMO-PDAF', '--- apply log-10 transformation to ', trim(var)
-          state(off+1 : off+dim) = log10(state(off+1 : off+dim) + shift)
-       case(2)
-          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-               'NEMO-PDAF', '--- apply ln transformation to', trim(var)
-          state(off+1 : off+dim) = log(state(off+1 : off+dim) + shift)
-       case(3)
-          write(*,*) 'no transformation- box cox still needs to be implemented'
-       case DEFAULT
-!          write(*,*) 'No Transformation of variable ', trim(var)
-       end select
-
-    elseif (type==2) then
-       ! Transformation from transformed value to NEMO value
-
-       select case (trafo)
-       case(0)
-!          write(*,*) 'No Transformation of bio limit'
-       case(1)
-          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-               'NEMO-PDAF', '--- revert log-10 transformation to ', trim(var)
-          state(off+1 : off+dim) = (10.D0**state(off+1 : off+dim))-shift
-       case(2)
-          if (verbose>0) write(*,'(a, 4x, a, 1x, a)') &
-               'NEMO-PDAF', '--- revert ln transformation to', trim(var)
-          state(off+1 : off+dim) = (exp(state(off+1 : off+dim)))-shift
-       case(3)
-          write(*,*) 'no transformation- box cox still needs to be implemented'
-       case DEFAULT
-!          write(*,*) 'No Transformation of bio variable'
-       end select
-
-    end if
-
-  end subroutine transform_field
-
+         end do
+
+      elseif (use_wet_state==2) then
+
+         if (ndims == 3) then
+
+   !!!!$OMP PARALLEL DO PRIVATE (i, cnt)
+            do i = 1, nwet
+               cnt = wet_pts(5,i) - 1 + offset
+               do k = 1, wet_pts(3,i)
+                  field(wet_pts(6, i), wet_pts(7, i), k) = state(cnt + k)
+               end do
+   !!!!$OMP END PARALLEL DO
+            end do
+
+         else
+
+   !!!!$OMP PARALLEL DO PRIVATE (i, cnt)
+            do i = 1, nwet
+               cnt = offset + i
+               field(wet_pts(6, i), wet_pts(7, i), 1) = state(cnt)
+   !!!!$OMP END PARALLEL DO
+            end do
+
+         end if
+      else
+
+         cnt = 1 + offset
+         do k = 1, n_levels
+            do j = 1, nj_p
+               do i = 1, ni_p
+                  field(i,j,k) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
+                  cnt = cnt + 1
+               enddo
+            enddo
+         enddo
+
+      end if
+
+   end subroutine state2field_3d
+   !==============================================================================
+   !> Convert from state vector to NEMO model field
+   !!
+   subroutine state2field_2d(state, field, offset, ndims)
+
+      implicit none
+
+      ! *** Arguments ***
+      real(pwp), intent(in)    :: state(:)         !< State vector
+      real(pwp), intent(out)   :: field(:,:)       !< Model field
+      integer,   intent(in)    :: offset           !< Offset in state vector
+      integer,   intent(in)    :: ndims            !< Number of dimensions in field
+
+      ! *** Local variables ***
+      integer :: i, j
+      integer :: cnt
+
+
+      ! *** Initialize model field from state vector
+
+      if ((use_wet_state==1) .or. (use_wet_state==2)) then
+         do i = 1, nwet
+            cnt = i + offset
+            field(wet_pts(6, i), wet_pts(7, i)) = state(cnt)
+         end do
+      else
+         cnt = 1 + offset
+         do j = 1, nj_p
+            do i = 1, ni_p
+                  field(i,j) = state(cnt) !convert to NEMO format (ntimec,nlvls,nlats,nlons)
+               cnt = cnt + 1
+            enddo
+         enddo
+      end if
+
+   end subroutine state2field_2d
    !==============================================================================
 
    !> Transform all fields, e.g. to log and back
