@@ -348,7 +348,7 @@ contains
       ! **********************
       if (verbose_io>0 .and. mype_model==0) write (*,'(8x,a)') '--- Write increment file'
       ! *** Set increment times ***
-      time = ndastp + nn_time0*0.0001_pwp
+      time = ndastp + real(nn_time0, pwp)*0.0001_pwp
       ! Prepare file writing
       if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
       nf_prec = NF90_DOUBLE
@@ -401,7 +401,7 @@ contains
       call check( NF90_DEF_VAR(ncid, 'time', NF90_DOUBLE, id_time))
       call check( NF90_DEF_VAR(ncid, 'z_inc_dateb', NF90_DOUBLE, id_dateb))
       call check( NF90_DEF_VAR(ncid, 'z_inc_datef', NF90_DOUBLE, id_datef))
-      call check( NF90_DEF_VAR(ncid, 'time_counter', NF90_DOUBLE, id_time_counter))
+      call check( NF90_DEF_VAR(ncid, 'time_counter', NF90_DOUBLE, dimids_field(4), id_time_counter))
       call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
       call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
       call check( NF90_DEF_VAR(ncid, 'nav_lev', NF90_FLOAT, dimids_field(3), id_lev))
@@ -415,7 +415,7 @@ contains
          if (sfields(i)%ndims==3) then
             dimids_field(3)=dimid_lvls
             call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_incr), nf_prec, &
-                                     dimids_field(1:4), id_incr) )
+                                     dimids_field, id_incr) )
          else
             dimids_field(3)=dimid_time
             call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_incr), &
