@@ -153,7 +153,7 @@ contains
       use config_pdaf, only: screen
       use mod_kind_pdaf
       use parallel_pdaf, &
-            only: mype=>mype_ens, npes=>npes_ens, task_id, comm_ensemble, &
+            only: mype=>mype_ens, comm_ensemble, &
             comm_model, MPI_SUM, MPI_INTEGER, MPIerr
       implicit none
       ! *** Local variables ***
@@ -180,27 +180,21 @@ contains
                'NEMO-PDAF','pe','ID', 'variable', 'ndims', 'dim', 'offset'
       end if
 
-      if (mype==0 .or. (task_id==1 .and. screen>2)) then
+      if (mype==0 .or. screen>2) then
          do i = 1, n_fields
             write (*,'(a, i4, i5,3x,a10,2x,i5,3x,i10,3x,i10,4x,l)') 'NEMO-PDAF', &
                   mype, i, sfields(i)%variable, sfields(i)%ndims, sfields(i)%dim, sfields(i)%off
          end do
       end if
 
-      if (npes==1) then
-         write (*,'(a,2x,a,1x,i10)') 'NEMO-PDAF', 'Full state dimension: ',dim_state_p
-      else
-         if (task_id==1) then
-            if (screen>1 .or. mype==0) &
-                  write (*,'(a,2x,a,1x,i4,2x,a,1x,i10)') &
-                  'NEMO-PDAF', 'PE', mype, 'PE-local full state dimension: ',dim_state_p
 
-            call MPI_Reduce(dim_state_p, dim_state, 1, MPI_INTEGER, MPI_SUM, 0, COMM_model, MPIerr)
-            if (mype==0) then
-               write (*,'(a,2x,a,1x,i10)') 'NEMO-PDAF', 'Global state dimension: ',dim_state
-            end if
-         end if
-      end if
+      if (screen>1 .or. mype==0) &
+            write (*,'(a,2x,a,1x,i4,2x,a,1x,i10)') &
+            'NEMO-PDAF', 'PE', mype, 'PE-local full state dimension: ',dim_state_p
+
+      call MPI_Reduce(dim_state_p, dim_state, 1, MPI_INTEGER, MPI_SUM, 0, COMM_model, MPIerr)
+      if (mype==0) &
+         write (*,'(a,2x,a,1x,i10)') 'NEMO-PDAF', 'Global state dimension: ',dim_state
       call MPI_Barrier(comm_ensemble, MPIerr)
 
    end subroutine setup_statevector

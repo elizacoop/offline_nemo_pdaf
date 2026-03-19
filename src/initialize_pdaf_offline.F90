@@ -34,7 +34,7 @@ contains
 
       use mod_kind_pdaf
       use PDAF, only: PDAF_init, PDAF_set_iparam, PDAF_set_rparam
-      use parallel_pdaf, only: task_id, COMM_model, COMM_filter, &
+      use parallel_pdaf, only: COMM_model, COMM_filter, &
                                COMM_couple, mype_ens, filterpe, abort_parallel
       use config_pdaf, only: screen, step_null, filtertype, subtype, dim_ens, &
                              type_forget, forget, type_trans, type_sqrt, locweight
@@ -60,9 +60,7 @@ contains
       call timeit(2,'old')
       call timeit(3,'new')
 
-      if (mype_ens == 0) then
-         write (*, '(/a,1x,a)') 'NEMO-PDAF', 'INITIALIZE PDAF'
-      end if
+      if (mype_ens == 0) write (*, '(/a,1x,a)') 'NEMO-PDAF', 'INITIALIZE PDAF'
 
       ! ******************************************
       ! *** Namelist reading and screen output ***
@@ -80,14 +78,15 @@ contains
       ! *** Call PDAF initialization routine on all PEs.  ***
       ! *****************************************************
       ! *** All filters except LKNETF/EnKF/LEnKF ***
-      filter_param_i(1) = dim_state_p ! State dimension
+      ! dim_state_p needs to be at least 1
+      filter_param_i(1) = max(dim_state_p, 1) ! State dimension
       filter_param_i(2) = dim_ens     ! Size of ensemble
       filter_param_r(1) = forget      ! Forgetting factor
       call PDAF_init(filtertype, subtype, step_null, &
             filter_param_i, 2, &
             filter_param_r, 1, &
             COMM_model, COMM_filter, COMM_couple, &
-            task_id, 1, filterpe, init_ens_pdaf, &
+            1, 1, filterpe, init_ens_pdaf, &
             screen, status_pdaf)
       call PDAF_set_iparam(5, type_forget, status_pdaf) ! Type of forgetting factor
       call PDAF_set_iparam(6, type_trans, status_pdaf)  ! Type of ensemble transformation

@@ -33,11 +33,7 @@ program MAIN
    initscreen: if (mype_world == 0) then
       write (*, '(/8x, a/)') '+++++ PDAF offline mode +++++'
       write (*, '(9x, a)') 'Data assimilation with PDAF'
-      if (npes_world > 1) then
-         write (*, '(21x, a, i3, a/)') 'Running on ', npes_world, ' PEs'
-      else
-         write (*, '(21x, a/)') 'Running on 1 PE'
-      end if
+      write (*, '(21x, a, i3, a/)') 'Running on ', npes_world, ' PEs'
    end if initscreen
 
    call read_config_pdaf()
