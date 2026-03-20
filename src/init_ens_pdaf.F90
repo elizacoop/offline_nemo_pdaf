@@ -12,8 +12,7 @@
 !!
 !!  - Called from: `init_pdaf/PDAF_init` (PDAF module)
 !!
-subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, &
-     ens_p, flag)
+subroutine init_ens_pdaf(filtertype, dim_p, dim_ens, state_p, Uinv, ens_p, flag)
    use mod_kind_pdaf
    use io_pdaf, only: read_restart
    use parallel_pdaf, only: mype_filter

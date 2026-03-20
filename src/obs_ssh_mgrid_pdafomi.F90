@@ -126,38 +126,49 @@ contains
       thisobs%ncoord = 2
       ! Set to use limited full observations
       thisobs%use_global_obs = use_global_obs
+      ! Omit large innovation to omit nwet = 0 points
+      thisobs%inno_omit = 1e6
       ! ***********************************************************
       ! *** Count available observations for the process domain ***
       ! *** and initialize index and coordinate arrays.         ***
       ! ***********************************************************
       ! Set number of local observations
       dim_obs_p = nwet
-      ! Vector of observations on the process sub-domain
-      allocate (obs_p(dim_obs_p))
-      ! Coordinate array of observations on the process sub-domain
-      allocate (ocoord_p(2, dim_obs_p))
-      ! Coordinate array for observation operator
-      allocate (thisobs%id_obs_p(1, dim_obs_p))
-      allocate (ivar_obs_p(dim_obs_p))
-      do i = 1, nwet
-         ! State vector index counter for observation operator.
-         obs_p(i) = 0.0_pwp
-         ! Observation coordinates - must be in radians for PDAFOMI
-         ocoord_p(1, i) = glamt(wet_pts(6, i), wet_pts(7, i))*rad_conv
-         ocoord_p(2, i) = gphit(wet_pts(6, i), wet_pts(7, i))*rad_conv
-         ! Coordinates for observation operator (gridpoint)
-         thisobs%id_obs_p(1, i) = i + sfields(id_sfields)%off
-      end do
+      if (dim_obs_p > 0) then
+         ! Vector of observations on the process sub-domain
+         allocate (obs_p(dim_obs_p))
+         ! Coordinate array of observations on the process sub-domain
+         allocate (ocoord_p(2, dim_obs_p))
+         ! Coordinate array for observation operator
+         allocate (thisobs%id_obs_p(1, dim_obs_p))
+         allocate (ivar_obs_p(dim_obs_p))
+         do i = 1, nwet
+            ! State vector index counter for observation operator.
+            obs_p(i) = 0.0_pwp
+            ! Observation coordinates - must be in radians for PDAFOMI
+            ocoord_p(1, i) = glamt(wet_pts(6, i), wet_pts(7, i))*rad_conv
+            ocoord_p(2, i) = gphit(wet_pts(6, i), wet_pts(7, i))*rad_conv
+            ! Coordinates for observation operator (gridpoint)
+            thisobs%id_obs_p(1, i) = i + sfields(id_sfields)%off
+         end do
+         ! *********************************************************
+         ! *** For twin experiment: Read synthetic observations  ***
+         ! *********************************************************
+         call add_noise(dim_obs_p, obs_p)
+      else
+         ! Set empty arrays if no local observations
+         allocate (obs_p(1))
+         allocate (ocoord_p(2, 1))
+         allocate (thisobs%id_obs_p(1, 1))
+         allocate (ivar_obs_p(1))
+      end if
       print *, thisobs%id_obs_p(1, 1), thisobs%id_obs_p(1, nwet)
       ! ****************************************************************
       ! *** Define observation errors for process-local observations ***
       ! ****************************************************************
       ! Set inverse observation error variances
       ivar_obs_p(:) = 1.0/(rms*rms)
-      ! *********************************************************
-      ! *** For twin experiment: Read synthetic observations  ***
-      ! *********************************************************
-      call add_noise(dim_obs_p, obs_p)
+
       ! ****************************************
       ! *** Gather global observation arrays ***
       ! ****************************************
@@ -180,9 +191,8 @@ contains
    !>
    subroutine obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
 
-      use PDAF, &
-         only: PDAFomi_obs_op_gridpoint
-
+      use PDAF, only: PDAFomi_obs_op_gridpoint
+      use nemo_pdaf, only: nwet, use_wet_state
       !> PE-local state dimension
       integer, intent(in) :: dim_p
       !> Dimension of full observed state (all observed fields)
@@ -198,6 +208,9 @@ contains
 
       if (thisobs%doassim == 1) then
          call PDAFomi_obs_op_gridpoint(thisobs, state_p, ostate)
+         if (use_wet_state == 1 .or. use_wet_state == 2) then
+            if (nwet == 0) ostate(1) = state_p(1) + thisobs%inno_omit
+         end if
       end if
 
    end subroutine obs_op_ssh_mgrid

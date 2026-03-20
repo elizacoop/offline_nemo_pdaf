@@ -39,11 +39,8 @@ module parallel_pdaf
 
    logical :: modelpe            ! Whether we are on a PE in a COMM_model
    logical :: filterpe           ! Whether we are on a PE in a COMM_filter
-   integer :: task_id            ! Index of my model task (1,...,n_modeltasks)
-   character(len=10) :: task_str ! Task ID as string
    integer :: MPIerr             ! Error flag for MPI
    integer :: MPIstatus(MPI_STATUS_SIZE)       ! Status array for MPI
-   integer, allocatable :: local_npes_model(:) ! # PEs per ensemble
 
 contains
 
@@ -55,10 +52,7 @@ contains
       use timer, only: timeit
       implicit none
       integer, intent(in) :: screen ! Control verbosity of PDAF (see config_pdaf)
-      integer :: i, j                   !< Counters
-      integer :: pe_index               !< Index of PE
       integer :: my_color, color_couple !< Variables for communicator-splitting
-      integer :: tasks                  !< Number of taks for communicator splitting
       integer :: flag                   !< Flag for PDAF communicator setup
 
       call timeit(5,'ini')
@@ -67,93 +61,41 @@ contains
 
       ! Online in case of online mode: dim_ens = number of parallel model tasks
       n_modeltasks = 1
-      ! offline mode always has only one model task
-      tasks = 1
       ! ***              COMM_ENSEMBLE                ***
       ! *** Generate communicator for ensemble runs   ***
       ! *** only used to generate model communicators ***
       COMM_ensemble = MPI_COMM_WORLD
       call MPI_Comm_Size(COMM_ensemble, npes_ens, MPIerr)
       call MPI_Comm_Rank(COMM_ensemble, mype_ens, MPIerr)
-
       ! Initialize communicators for ensemble evaluations
-      if (mype_ens == 0) then
+      if (mype_ens == 0) &
          write (*, '(/a, 2x, a)') 'PDAF', 'Initialize communicators for assimilation with PDAF'
-      end if
-
-      ! Store # PEs per ensemble member. Used for info on PE 0 and for
-      ! generation of model communicators on other PEs
-      allocate (local_npes_model(tasks))
-      local_npes_model = floor(real(npes_ens)/real(tasks))
-
-      do i = 1, (npes_ens - tasks*local_npes_model(1))
-         local_npes_model(i) = local_npes_model(i) + 1
-      end do
-
       ! ***              COMM_MODEL               ***
       ! *** Generate communicators for model runs ***
-
-      pe_index = 0
-      doens1: do i = 1, tasks
-         do j = 1, local_npes_model(i)
-            if (mype_ens == pe_index) then
-               task_id = i
-               exit doens1
-            end if
-            pe_index = pe_index + 1
-         end do
-      end do doens1
-
-      call MPI_Comm_split(COMM_ensemble, task_id, mype_ens, &
-                          COMM_model, MPIerr)
-
+      my_color = 1
+      call MPI_Comm_split(COMM_ensemble, my_color, mype_ens, COMM_model, MPIerr)
       ! Re-initialize PE information according to model communicator
       call MPI_Comm_Size(COMM_model, npes_model, MPIerr)
       call MPI_Comm_Rank(COMM_model, mype_model, MPIerr)
-
-      if (screen > 1) then
-         write (*, *) 'PDAF-MODEL: mype(w)= ', mype_ens, '; model task: ', task_id, &
+      if (screen > 1) &
+         write (*, *) 'PDAF-MODEL: mype(w)= ', mype_ens, '; model task: ', 1, &
             '; mype(m)= ', mype_model, '; npes(m)= ', npes_model
-      end if
-
-      ! Init flag FILTERPE (all PEs of model task 1)
-      if (task_id == 1) then
-         filterpe = .true.
-      else
-         filterpe = .false.
-      end if
-
       ! ***         COMM_FILTER                 ***
       ! *** Generate communicator for filter    ***
-
-      if (filterpe) then
-         my_color = task_id
-      else
-         my_color = MPI_UNDEFINED
-      end if
-
       call MPI_Comm_split(COMM_ensemble, my_color, mype_ens, &
                           COMM_filter, MPIerr)
-
       ! Initialize PE information according to filter communicator
-      if (filterpe) then
-         call MPI_Comm_Size(COMM_filter, npes_filter, MPIerr)
-         call MPI_Comm_Rank(COMM_filter, mype_filter, MPIerr)
-      end if
-
+      call MPI_Comm_Size(COMM_filter, npes_filter, MPIerr)
+      call MPI_Comm_Rank(COMM_filter, mype_filter, MPIerr)
       ! ***              COMM_COUPLE                 ***
       ! *** Generate communicators for communication ***
       ! *** between model and filter PEs             ***
-
       color_couple = mype_model + 1
-
       call MPI_Comm_split(COMM_ensemble, color_couple, mype_ens, &
                           COMM_couple, MPIerr)
-
       ! Initialize PE information according to coupling communicator
       call MPI_Comm_Size(COMM_couple, npes_couple, MPIerr)
       call MPI_Comm_Rank(COMM_couple, mype_couple, MPIerr)
-
       if (screen > 0) then
          if (mype_ens == 0) then
             write (*, '(/18x, a)') 'PE configuration:'
@@ -163,26 +105,17 @@ contains
                'Pconf', '----------------------------------------------------------'
          end if
          call MPI_Barrier(COMM_ensemble, MPIerr)
-         if (task_id == 1) then
-            write (*, '(a, 2x, i4, 4x, i4, 4x, i3, 4x, i3, 4x, i3, 4x, i3, 5x, l3)') &
-               'Pconf', mype_ens, mype_filter, task_id, mype_model, color_couple, &
-               mype_couple, filterpe
-         end if
-         if (task_id > 1) then
-            write (*, '(a, 2x, i4, 12x, i3, 4x, i3, 4x, i3, 4x, i3, 5x, l3)') &
-               'Pconf', mype_ens, task_id, mype_model, color_couple, mype_couple, filterpe
-         end if
+         write (*, '(a, 2x, i4, 4x, i4, 4x, i3, 4x, i3, 4x, i3, 4x, i3, 5x, l3)') &
+            'Pconf', mype_ens, mype_filter, 1, mype_model, color_couple, &
+            mype_couple, filterpe
          call MPI_Barrier(COMM_ensemble, MPIerr)
-
          if (mype_ens == 0) write (*, '(/a)') ''
-
       end if
       ! *****************************************************
       ! *** Set communicator within which PDAF operates.  ***
       ! *****************************************************
-
       CALL PDAF3_set_parallel(COMM_ensemble, COMM_model, COMM_filter, COMM_couple, &
-                              task_id, n_modeltasks, filterpe, flag)
+                              1, n_modeltasks, filterpe, flag)
       call timeit(1,'old')
       call timeit(2,'new')
 

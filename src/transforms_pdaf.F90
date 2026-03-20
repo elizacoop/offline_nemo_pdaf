@@ -12,7 +12,7 @@ module transforms_pdaf
   use nemo_pdaf, &
        only: nlvls=>jpk, nj_p, ni_p, nwet, wet_pts, use_wet_state, i0, j0
   use statevector_pdaf, only: sfields, n_fields
-  use parallel_pdaf, only: mype=>mype_model, task_id
+  use parallel_pdaf, only: mype=>mype_model
 
   implicit none
   save
@@ -62,6 +62,8 @@ contains
             end do
 !$OMP END PARALLEL DO
          end do
+         ! deal with nwet = 0 case
+         if (nwet == 0) state(offset+1) = 0.0_pwp
       elseif (use_wet_state==2) then
          if (ndims == 3) then
 !$OMP PARALLEL DO PRIVATE (i, k, cnt)
@@ -80,6 +82,8 @@ contains
             end do
 !$OMP END PARALLEL DO
          end if
+         ! deal with nwet = 0 case
+         if (nwet == 0) state(offset+1) = 0.0_pwp
       else
          cnt = 1 + offset
          do k = 1, n_levels
@@ -124,6 +128,8 @@ contains
             end do
 !$OMP END PARALLEL DO
          end do
+         ! deal with nwet = 0 case
+         if (nwet == 0) state(offset+1) = 0.0_pwp
       elseif (use_wet_state==2) then
          if (ndims == 3) then
             do i = 1, nwet
@@ -138,6 +144,8 @@ contains
                state(cnt) = field(wet_pts(6, i), wet_pts(7, i), 1)
             end do
          end if
+         ! deal with nwet = 0 case
+         if (nwet == 0) state(offset+1) = 0.0_pwp
       else
          cnt = 1 + offset
          do k = 1, n_levels
@@ -149,6 +157,7 @@ contains
             enddo
          enddo
       end if
+
    end subroutine field2state_3d
    !============================================================================
    !> Convert from NEMO model field to state vector
@@ -169,6 +178,8 @@ contains
             cnt = i + offset
             state(cnt) = field(wet_pts(6, i), wet_pts(7, i))
          end do
+         ! deal with nwet = 0 case
+         if (nwet == 0) state(offset+1) = 0.0_pwp
       else
          cnt = 1 + offset
          do j = 1,nj_p

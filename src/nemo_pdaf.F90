@@ -128,6 +128,7 @@ contains
          write (*, '(8x,a,i3)') 'WARNING: No valid local domains, PE=', mype_model
          nwet = 0
          allocate(wet_pts(3, 1))
+         wet_pts(:, :) = 0
       end if
 
       ! Initialize index arrays
