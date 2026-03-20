@@ -2,7 +2,7 @@
 
 &pdaf_nml
   screen = 2
-  dim_ens = 2
+  dim_ens = 5
   filtertype = 7
   subtype = 0
   type_trans = 0
@@ -13,23 +13,23 @@
 /
 
 &io_nml
-  verbose_io = 2
+  verbose_io = 3
   sgldbl_io = 'dbl'
-  path_dom = '/storage/research/nceo/ia923171/nemo/nemo_5.0.1/cfgs/UOR_ORCA2_ICE/ens_1'
+  path_dom = '/work/n01/n01/elicoo/CRISP_NEMO_PDAF/CRISP_NEMO_PDAF_1/nemo_5.0.1/cfgs/exp-build-notop/EXP00_template_rundir/'
   fname_dom = 'ORCA_R2_zps_domcfg.nc'
   ! the parth to restart files is constructed by the following variables
   ! path_rst_root//ens_prefix[1-N]//path_rst_suffix//f_basename_rst_000x.nc
-  path_rst_root = '/storage/research/nceo/ia923171/nemo/nemo_5.0.1/cfgs/UOR_ORCA2_ICE/'
+  path_rst_root = '/work/n01/n01/elicoo/CRISP_NEMO_PDAF/CRISP_NEMO_PDAF_1/nemo_5.0.1/cfgs/exp-build-notop/'
   ! ensemble prefix
   ! ensemble numbers must be from 1 - N, it cannot have zero paddings.
   ens_prefix = 'ens_'
   ! rest of the path to restart files
-  path_rst_suffix = '.'
-  f_basename_rst = 'ORCA2_00000072_restart'
+  path_rst_suffix = 'restart_end_ctrl/'
+  f_basename_rst = 'ORCA2_00043800_restart_end_ctrl'
   ! the parth to increment files is constructed by the following variables
   ! path_asm_root//ens_prefix[1-N]/assim_background_increments_xxxx.nc
   ! path_asm_root//ens_prefix[1-N]/assim_background_state_DI_xxxx.nc
-  path_asm_root = '/storage/research/nceo/ia923171/nemo/nemo_5.0.1/cfgs/UOR_ORCA2_ICE/'
+  path_asm_root = '/work/n01/n01/elicoo/CRISP_NEMO_PDAF/CRISP_NEMO_PDAF_1/nemo_5.0.1/cfgs/exp-build-notop/'
   ! initial time of day in hhmm
   nn_time0 = 0
 /
@@ -45,7 +45,7 @@
   sfields(1)%name_incr = 'bckint'
   sfields(1)%name_rest_n = 'tn'
   sfields(1)%name_rest_b = 'tb'
-  sfields(1)%rst_file = 'ORCA2_00000072_restart'
+  sfields(1)%rst_file = 'ORCA2_00043800_restart_end_ctrl'
   sfields(1)%unit = 'degC'
 
   sfields(2)%ndims = 3
@@ -53,7 +53,7 @@
   sfields(2)%name_incr = 'bckins'
   sfields(2)%name_rest_n = 'sn'
   sfields(2)%name_rest_b = 'sb'
-  sfields(2)%rst_file = 'ORCA2_00000072_restart'
+  sfields(2)%rst_file = 'ORCA2_00043800_restart_end_ctrl'
   sfields(2)%unit = 'psu'
   sfields(2)%transform = 0
   sfields(2)%trafo_shift = 0.0
@@ -67,7 +67,7 @@
   ! this is the index of obs. in sfields for fake obs.
   id_sfields = 1
   rms = 0.5
-  lradius = 20000
-  sradius = 20000
+  lradius = 2000000
+  sradius = 2000000
   noise_amp = 0.5
 /
