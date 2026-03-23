@@ -38,7 +38,7 @@ module parallel_pdaf
    integer :: npes_world         ! Size in MPI_COMM_WORLD
 
    logical :: modelpe            ! Whether we are on a PE in a COMM_model
-   logical :: filterpe           ! Whether we are on a PE in a COMM_filter
+   logical :: filterpe = .true.  ! Whether we are on a PE in a COMM_filter
    integer :: MPIerr             ! Error flag for MPI
    integer :: MPIstatus(MPI_STATUS_SIZE)       ! Status array for MPI
 
