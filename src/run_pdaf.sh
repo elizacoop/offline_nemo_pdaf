@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=pdaf_test
-#SBATCH --time=00:30:00
+#SBATCH --time=00:19:00
 #SBATCH --account=n01-CRISP
 #SBATCH --partition=standard
-#SBATCH --qos=standard
+#SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=95
 
