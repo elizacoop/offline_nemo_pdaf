@@ -7,6 +7,8 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=95
 
+export OMP_NUM_THREADS=1
+
 # Load environmen
 module swap PrgEnv-cray/8.4.0 PrgEnv-gnu/8.4.0
 module load cray-mpich/8.1.27
