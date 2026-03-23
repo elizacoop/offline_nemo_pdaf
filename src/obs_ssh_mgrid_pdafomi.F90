@@ -158,11 +158,12 @@ contains
       else
          ! Set empty arrays if no local observations
          allocate (obs_p(1))
+         obs_p(1) = thisobs%inno_omit
          allocate (ocoord_p(2, 1))
          allocate (thisobs%id_obs_p(1, 1))
          allocate (ivar_obs_p(1))
       end if
-      print *, thisobs%id_obs_p(1, 1), thisobs%id_obs_p(1, nwet)
+      print *, mype_filter, dim_obs_p, thisobs%id_obs_p(1, 1), thisobs%id_obs_p(1, nwet)
       ! ****************************************************************
       ! *** Define observation errors for process-local observations ***
       ! ****************************************************************
@@ -192,7 +193,6 @@ contains
    subroutine obs_op_ssh_mgrid(dim_p, dim_obs, state_p, ostate)
 
       use PDAF, only: PDAFomi_obs_op_gridpoint
-      use nemo_pdaf, only: nwet, use_wet_state
       !> PE-local state dimension
       integer, intent(in) :: dim_p
       !> Dimension of full observed state (all observed fields)
@@ -205,12 +205,8 @@ contains
       ! ******************************************************
       ! *** Apply observation operator H on a state vector ***
       ! ******************************************************
-
       if (thisobs%doassim == 1) then
          call PDAFomi_obs_op_gridpoint(thisobs, state_p, ostate)
-         if (use_wet_state == 1 .or. use_wet_state == 2) then
-            if (nwet == 0) ostate(1) = state_p(1) + thisobs%inno_omit
-         end if
       end if
 
    end subroutine obs_op_ssh_mgrid
