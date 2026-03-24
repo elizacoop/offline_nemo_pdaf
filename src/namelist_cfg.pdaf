@@ -63,13 +63,13 @@
 
 &mgrid_ssh_nml
   assim_ssh_mgrid = .true.
-  !varname_ssh_mgrid = 'zos'
-  !file_ssh_mgrid = '../../nemo_5.0.1/cfgs/exp-build-notop/ens_5/ORCA2_5d_20100101_20141231_grid_T.nc'
+  varname_ssh_mgrid = 'zos'
+  file_ssh_mgrid = '../../nemo_5.0.1/cfgs/exp-build-notop/EXP6_ens6_incprecip/ORCA2_5d_20100101_20141231_grid_T.nc'
   use_global_obs = 1
   ! this is the index of obs. in sfields for fake obs.
   id_sfields = 1
   rms = 0.5
   lradius = 20000
   sradius = 20000
-  noise_amp = 0.5
+  !noise_amp = 0.5
 /
