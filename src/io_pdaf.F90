@@ -272,7 +272,7 @@ contains
       character(len=lc) :: path_rst ! path to restart files
       INTEGER :: ncid              ! netCDF file identifier
       INTEGER :: varid             ! variable identifier
-      integer :: i                 ! counter
+      integer :: i, k              ! counter
       integer :: nk                ! number of levels for given variable
       integer :: ndims             ! number of dimensions of variable in restart file
       ! Construct restart file path
@@ -315,7 +315,9 @@ contains
          end if
          ! operations to form state vector
          if (trim(adjustl(sfields(i)%operation)) == 'sum_over_cat') then
-            tmp_4d(:,:,1,1) = sum(tmp_4d(:,:,:,1), dim=3)
+            do k = 2, nk
+               tmp_4d(:,:,1,1) = tmp_4d(:,:,1,1) + tmp_4d(:,:,k,1)
+            end do
          else if (trim(adjustl(sfields(i)%operation)) == '') then
          else
             write(*,'(a,2x,a)') 'NEMO-PDAF', 'Unknown operation for combining variables in restart file: '// &
