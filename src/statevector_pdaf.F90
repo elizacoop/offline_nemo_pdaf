@@ -16,7 +16,7 @@
 module statevector_pdaf
 
    use mod_kind_pdaf
-   use nemo_pdaf, only: use_wet_state
+   use nemo_pdaf, only: use_wet_state, numcat
    implicit none
    save
 
@@ -67,7 +67,7 @@ module statevector_pdaf
    ! Variables to handle multiple fields in the state vector
    integer :: n_fields          !< number of fields in state vector
 
-   namelist /sv_nml/ n_fields, use_wet_state
+   namelist /sv_nml/ n_fields, use_wet_state, numcat
    namelist /sfields_nml/ sfields
 
 !$OMP THREADPRIVATE(sfields_l)
