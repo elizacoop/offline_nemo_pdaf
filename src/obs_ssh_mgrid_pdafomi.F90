@@ -163,7 +163,6 @@ contains
          allocate (thisobs%id_obs_p(1, 1))
          allocate (ivar_obs_p(1))
       end if
-      print *, mype_filter, dim_obs_p, thisobs%id_obs_p(1, 1), thisobs%id_obs_p(1, nwet)
       ! ****************************************************************
       ! *** Define observation errors for process-local observations ***
       ! ****************************************************************

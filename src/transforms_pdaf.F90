@@ -63,7 +63,7 @@ contains
 !$OMP END PARALLEL DO
          end do
          ! deal with nwet = 0 case
-         if (nwet == 0) state(offset+1) = 0.0_pwp
+         if (nwet == 0) state(1) = 0.0_pwp
       elseif (use_wet_state==2) then
          if (ndims == 3) then
 !$OMP PARALLEL DO PRIVATE (i, k, cnt)
@@ -83,7 +83,7 @@ contains
 !$OMP END PARALLEL DO
          end if
          ! deal with nwet = 0 case
-         if (nwet == 0) state(offset+1) = 0.0_pwp
+         if (nwet == 0) state(1) = 0.0_pwp
       else
          cnt = 1 + offset
          do k = 1, n_levels
@@ -129,7 +129,7 @@ contains
 !$OMP END PARALLEL DO
          end do
          ! deal with nwet = 0 case
-         if (nwet == 0) state(offset+1) = 0.0_pwp
+         if (nwet == 0) state(1) = 0.0_pwp
       elseif (use_wet_state==2) then
          if (ndims == 3) then
             do i = 1, nwet
@@ -145,7 +145,7 @@ contains
             end do
          end if
          ! deal with nwet = 0 case
-         if (nwet == 0) state(offset+1) = 0.0_pwp
+         if (nwet == 0) state(1) = 0.0_pwp
       else
          cnt = 1 + offset
          do k = 1, n_levels
@@ -179,7 +179,7 @@ contains
             state(cnt) = field(wet_pts(6, i), wet_pts(7, i))
          end do
          ! deal with nwet = 0 case
-         if (nwet == 0) state(offset+1) = 0.0_pwp
+         if (nwet == 0) state(1) = 0.0_pwp
       else
          cnt = 1 + offset
          do j = 1,nj_p

@@ -40,24 +40,33 @@
 /
 
 &sfields_nml
-  sfields(1)%ndims = 3
-  sfields(1)%variable = 'thetao'
-  sfields(1)%name_incr = 'bckint'
-  sfields(1)%name_rest_n = 'tn'
-  sfields(1)%name_rest_b = 'tb'
-  sfields(1)%rst_file = 'ORCA2_00000072_restart'
-  sfields(1)%unit = 'degC'
+  sfields(1)%ndims = 2
+  sfields(1)%variable = 'area'
+  sfields(1)%name_incr = 'bckinseaice'
+  sfields(1)%name_rest_n = 'a_i'
+  sfields(1)%rst_file = 'ORCA2_00000072_restart_ice'
+  sfields(1)%k_name = 'cat'
+  sfields(1)%operation = 'sum_over_cat'
+  ! These limit seems to be treated directly by ASMINC,
+  ! so we may just use limit = 0?
+  sfields(1)%limit = 3
+  sfields(1)%max_limit = 1
+  sfields(1)%min_limit = 0
 
-  sfields(2)%ndims = 3
-  sfields(2)%variable = 'so'
-  sfields(2)%name_incr = 'bckins'
-  sfields(2)%name_rest_n = 'sn'
-  sfields(2)%name_rest_b = 'sb'
-  sfields(2)%rst_file = 'ORCA2_00000072_restart'
-  sfields(2)%unit = 'psu'
+
+  sfields(2)%ndims = 2
+  sfields(2)%variable = 'volume'
+  sfields(2)%name_incr = 'bckinsit'
+  sfields(2)%name_rest_n = 'v_i'
+  sfields(2)%rst_file = 'ORCA2_00000072_restart_ice'
+  sfields(2)%unit = 'm'
+  sfields(2)%operation = 'sum_over_cat'
+  sfields(2)%k_name = 'cat'
   sfields(2)%transform = 0
   sfields(2)%trafo_shift = 0.0
-  sfields(2)%limit = 0
+  ! These limit seems to be treated directly by ASMINC,
+  ! so we may just use limit = 0?
+  sfields(2)%limit = 1
   sfields(2)%min_limit = 0.000001
 /
 

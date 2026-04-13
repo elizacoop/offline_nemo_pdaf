@@ -16,7 +16,7 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
    use PDAF, only: PDAFlocal_set_indices
    use assimilation_pdaf, only: domain_coords, id_lstate_in_pstate
    use nemo_pdaf, only: nav_lon, nav_lat, nwet, wet_pts, &
-                        sdim2d, deg2rad, use_wet_state
+                        sdim2d, deg2rad, use_wet_state, ni_p, nj_p
    use statevector_pdaf, only: n_fields, sfields, sfields_l, dim_state_p
    implicit none
    ! *** Arguments ***
@@ -126,7 +126,8 @@ subroutine init_dim_l_pdaf(step, domain_p, dim_l)
       end if
    enddo
 
-   if (id_lstate_in_pstate(wet_pts(3,domain_p)) > dim_state_p) then
+
+   if (id_lstate_in_pstate(dim_l) > dim_state_p) then
       write(*,*) 'Error: please check the global indices for local state vector'
    endif
 

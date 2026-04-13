@@ -17,6 +17,7 @@ module nemo_pdaf
 
    ! *** NEMO domain variables ***
    integer :: jpiglo, jpjglo, jpk        ! Global NEMO grid dimensions
+   integer :: numcat                     ! Number of categories in the sea ice model
    integer :: halo0(2), halo1(2)         ! The halo information for restart files
    integer :: time_counter(1)            ! Time counter from restart file
    integer  :: nn_time0                 ! initial time of day in hhmm
@@ -25,7 +26,7 @@ module nemo_pdaf
 
    real(pwp), allocatable :: glamt(:,:), glamu(:,:), glamv(:,:)       ! Longitudes
    real(pwp), allocatable :: gphit(:,:), gphiu(:,:), gphiv(:,:)       ! Latitudes
-   real(4), allocatable :: nav_lev(:)      ! Depths
+   real(4), allocatable   :: nav_lev(:)      ! Depths
    real(4), allocatable   :: nav_lon(:,:), nav_lat(:,:)   ! Restart file grid
    real(pwp), allocatable :: tmask(:,:,:)     ! Temperature mask array
    ! wet points for state vectors

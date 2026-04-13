@@ -33,7 +33,9 @@ module io_pdaf
    character(len=lc) :: path_asm_root              ! Path for increment files
    ! *** temporary variables for IO
    real(pwp), allocatable :: tmp_4d(:,:,:,:)     ! 4D array used to represent full NEMO grid box
+                                                 ! the dimension should be (x,y,z,time)
    real(4),   allocatable :: stmp_4d(:,:,:,:)    ! 4D array used to represent full NEMO grid box
+                                                 ! the dimension should be (x,y,z,time)
 
    namelist /io_nml/ verbose_io, sgldbl_io, path_dom, fname_dom, path_asm_root, &
                      path_rst_root, ens_prefix, path_rst_suffix,f_basename_rst, &
@@ -102,6 +104,17 @@ contains
       call check(nf90_get_att( ncid, NF90_GLOBAL, 'DOMAIN_halo_size_start', halo0 ))
       ! dom_pos_first
       call check(nf90_get_att( ncid, NF90_GLOBAL, 'DOMAIN_halo_size_end', halo1 ))
+      !ndastp
+      call check(nf90_inq_varid( ncid, 'ndastp', varid ))
+      call check(nf90_get_var( ncid, varid, ndastp))
+
+      i0 = dom_pos_first(1)
+      j0 = dom_pos_first(2)
+      ni_p = dom_size_local(1)
+      nj_p = dom_size_local(2)
+      ! jpk (z dimension)
+      call check(nf90_inq_dimid( ncid, 'nav_lev', varid ))
+      call check(nf90_inquire_dimension( ncid, varid, len=nk_p ))
       ! nav_lon
       allocate( nav_lon(ni_p, nj_p) )
       allocate( nav_lat(ni_p, nj_p) )
@@ -118,15 +131,8 @@ contains
       ! time_counter
       call check(nf90_inq_varid( ncid, 'time_counter', varid ))
       call check(nf90_get_var( ncid, varid, time_counter, [1], [1] ))
-      !ndastp
-      call check(nf90_inq_varid( ncid, 'ndastp', varid ))
-      call check(nf90_get_var( ncid, varid, ndastp))
       ! Close the NetCDF files
       call check (nf90_close( ncid ))
-      i0 = dom_pos_first(1)
-      j0 = dom_pos_first(2)
-      ni_p = dom_size_local(1)
-      nj_p = dom_size_local(2)
       ! Screen output
       if (npes_model>1 .and. screen>0) then
          if (mype_model == 0) then
@@ -253,20 +259,22 @@ contains
    SUBROUTINE read_restart(ens_member, state_p)
       USE netcdf
       use mod_memcount_pdaf, only: memcount
-      use nemo_pdaf, only: ni_p, nj_p, nk_p
+      use nemo_pdaf, only: ni_p, nj_p, nk_p, numcat
       use parallel_pdaf, only: mype_model
       use statevector_pdaf, only: sfields, n_fields
       use transforms_pdaf, only: field2state
       IMPLICIT NONE
       !*** Arguments ***
-      integer, intent(in) :: ens_member !< Ensemble member index
+      integer,   intent(in)    :: ens_member !< Ensemble member index
       real(pwp), intent(inout) :: state_p(:) !< State vector
       ! Local variables
       character(len=lc) :: fname ! file name
       character(len=lc) :: path_rst ! path to restart files
-      INTEGER :: ncid             ! netCDF file identifier
-      INTEGER :: varid            ! variable identifier
-      integer :: i                ! counter
+      INTEGER :: ncid              ! netCDF file identifier
+      INTEGER :: varid             ! variable identifier
+      integer :: i                 ! counter
+      integer :: nk                ! number of levels for given variable
+      integer :: ndims             ! number of dimensions of variable in restart file
       ! Construct restart file path
       call add_slash(path_rst_root)
       write(path_rst, '(a,i0,"/",a)') TRIM(path_rst_root)//TRIM(ens_prefix), &
@@ -292,12 +300,26 @@ contains
          call check( nf90_open(trim(path_rst)//trim(fname)//'.nc', nf90_nowrite, ncid) )
          !  Read field
          call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_n), varid) )
-         if (sfields(i)%ndims == 3) then
+         call check( nf90_inquire_variable(ncid, varid, ndims=ndims) )
+         if (ndims == 3) then
+            if (sfields(i)%k_name == 'cat') then
+               nk = numcat
+            else
+               nk = nk_p
+            end if
             call check( nf90_get_var(ncid, varid, tmp_4d, &
-                  start=[1, 1, 1, 1], count=[ni_p, nj_p, nk_p, 1]) )
+                  start=[1, 1, 1, 1], count=[ni_p, nj_p, nk, 1]) )
          else
-            call check( nf90_get_var(ncid, varid, tmp_4d(:,:,1,1), &
+            call check( nf90_get_var(ncid, varid, tmp_4d, &
                   start=[1, 1, 1], count=[ni_p, nj_p, 1]) )
+         end if
+         ! operations to form state vector
+         if (trim(adjustl(sfields(i)%operation)) == 'sum_over_cat') then
+            tmp_4d(:,:,1,1) = sum(tmp_4d(:,:,:,1), dim=3)
+         else if (trim(adjustl(sfields(i)%operation)) == '') then
+         else
+            write(*,'(a,2x,a)') 'NEMO-PDAF', 'Unknown operation for combining variables in restart file: '// &
+                  trim(sfields(i)%operation)//'. Using first names_rest_n only.'
          end if
          ! Close the file
          call check( nf90_close(ncid) )

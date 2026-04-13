@@ -22,21 +22,30 @@ module statevector_pdaf
 
    ! Declare Fortran type holding the definitions for model fields
    type state_field
-      integer :: ndims = 0                  !< Number of field dimensions (2 or 3)
-      integer :: dim = 0                    !< Dimension of the field
-      integer :: off = 0                    !< Offset of field in state vector
-      character(len=10) :: variable = ''    !< Name of field
-      character(len=20) :: name_incr = ''   !< Name of field in increment file
-      character(len=20) :: name_rest_n = '' !< Name of field in restart file (n-field)
-      character(len=20) :: name_rest_b = '' !< Name of field in restart file (b-field)
-      character(len=256) :: rst_file = ''   !< Name of restart file
-      character(len=20) :: unit = ''        !< Unit of variable
-      integer :: transform = 0              !< Type of variable transformation
-      real(pwp) :: trafo_shift = 0.0_pwp    !< Constant to shift value in transformation
-      integer :: limit = 0                  !< Whether to limit the value of the variable
-                                            !< 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
-      real(pwp) :: max_limit = 0.0_pwp      !< Upper limit of variable
-      real(pwp) :: min_limit = 0.0_pwp      !< Lower limit of variable
+      integer :: ndims = 0                    !< Number of field dimensions (2 or 3)
+      integer :: dim = 0                      !< Dimension of the field
+      integer :: off = 0                      !< Offset of field in state vector
+      character(len=10)  :: variable = ''     !< Name of field
+      character(len=20)  :: name_incr = ''    !< Name of field in increment file
+      character(len=20)  :: name_rest_n = ''  !< Name of field in restart file (n-field)
+      character(len=256) :: rst_file = ''     !< Name of restart file
+      character(len=3)  :: k_name = 'lev'    !< Name of field in vertical direction
+                                              !< 'lev' for vertical levels
+                                              !< or 'cat' for sea ice categories
+                                              !< luckily, all variables with numcat
+                                              !< dimension seem to be 2D.
+                                              !< This could be different for other sea ice models.
+                                              !< but let's keep it the case for now.
+      character(len=20)  :: operation = ''    !< operations to form state vector
+                                              !< only 'sum_over_cat' is implemented so far,
+                                              !< which sums up all variables in names_rest_n string
+      character(len=20)  :: unit = ''         !< Unit of variable
+      integer :: transform = 0                !< Type of variable transformation
+      real(pwp) :: trafo_shift = 0.0_pwp      !< Constant to shift value in transformation
+      integer :: limit = 0                    !< Whether to limit the value of the variable
+                                              !< 0: no limits, 1: lower limit, 2: upper limit, 3: both limits
+      real(pwp) :: max_limit = 0.0_pwp        !< Upper limit of variable
+      real(pwp) :: min_limit = 0.0_pwp        !< Lower limit of variable
    end type state_field
 
    ! Declare Fortran type holding the definitions for local model fields
@@ -72,6 +81,7 @@ contains
    subroutine init_sfields()
       use mod_kind_pdaf
       use nemo_pdaf, only: sdim2d, sdim3d
+      use parallel_pdaf, only: abort_parallel
       implicit none
       ! *** Local variables ***
       integer :: id_var            ! Index of a variable in state vector
@@ -82,7 +92,6 @@ contains
       ! sfields(id_var)%variable = 'zos'
       ! sfields(id_var)%name_incr = 'bckineta'
       ! sfields(id_var)%name_rest_n = 'sshn'
-      ! sfields(id_var)%name_rest_b = 'sshb'
       ! sfields(id_var)%rst_file = 'restart_in.nc'
       ! sfields(id_var)%unit = 'm'
 
@@ -91,7 +100,6 @@ contains
       ! sfields(id_var)%variable = 'thetao'
       ! sfields(id_var)%name_incr = 'bckint'
       ! sfields(id_var)%name_rest_n = 'tn'
-      ! sfields(id_var)%name_rest_b = 'tb'
       ! sfields(id_var)%rst_file = 'restart_in.nc'
       ! sfields(id_var)%unit = 'degC'
 
@@ -100,7 +108,6 @@ contains
       ! sfields(id_var)%variable = 'so'
       ! sfields(id_var)%name_incr = 'bckins'
       ! sfields(id_var)%name_rest_n = 'sn'
-      ! sfields(id_var)%name_rest_b = 'sb'
       ! sfields(id_var)%rst_file = 'restart_in.nc'
       ! sfields(id_var)%unit = 'psu'
       ! sfields(id_var)%transform = 0
@@ -113,7 +120,6 @@ contains
       ! sfields(id_var)%variable = 'uo'
       ! sfields(id_var)%name_incr = 'bckinu'
       ! sfields(id_var)%name_rest_n = 'un'
-      ! sfields(id_var)%name_rest_b = 'ub'
       ! sfields(id_var)%rst_file = 'restart_in.nc'
       ! sfields(id_var)%unit = 'm/s'
 
@@ -122,7 +128,6 @@ contains
       ! sfields(id_var)%variable = 'vo'
       ! sfields(id_var)%name_incr = 'bckinv'
       ! sfields(id_var)%name_rest_n = 'vn'
-      ! sfields(id_var)%name_rest_b = 'vb'
       ! sfields(id_var)%rst_file = 'restart_in.nc'
       ! sfields(id_var)%unit = 'm/s'
 
@@ -131,6 +136,18 @@ contains
       close (20)
 
       do id_var = 1, n_fields
+         if (sfields(id_var)%variable == '') then
+            write (*, '(a,i2,a)') 'NEMO-PDAF: variable name for field', id_var, ' is not specified.'
+            call abort_parallel()
+         end if
+         if (sfields(id_var)%name_incr == '') then
+            write (*, '(a,i2,a)') 'NEMO-PDAF: name of field in increment file for field', id_var, ' is not specified.'
+            call abort_parallel()
+         end if
+         if (sfields(id_var)%rst_file == '') then
+            write (*, '(a,i2,a)') 'NEMO-PDAF: name of restart file for field', id_var, ' is not specified.'
+            call abort_parallel()
+         end if
          if (sfields(id_var)%ndims == 2) then
             sfields(id_var)%dim = sdim2d
          else if (sfields(id_var)%ndims == 3) then
@@ -138,6 +155,7 @@ contains
          else
             write (*, '(a,i2,a)') 'NEMO-PDAF: cannot handle', &
                                   sfields(id_var)%ndims, ' number of dimensions.'
+            call abort_parallel()
          end if
       end do
 
