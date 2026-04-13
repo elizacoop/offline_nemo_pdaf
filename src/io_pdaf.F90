@@ -307,7 +307,7 @@ contains
             else
                nk = nk_p
             end if
-            call check( nf90_get_var(ncid, varid, tmp_4d, &
+            call check( nf90_get_var(ncid, varid, tmp_4d(:, :, :nk, 1), &
                   start=[1, 1, 1, 1], count=[ni_p, nj_p, nk, 1]) )
          else
             call check( nf90_get_var(ncid, varid, tmp_4d(:,:,1,1), &
