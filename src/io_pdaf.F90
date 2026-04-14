@@ -67,8 +67,8 @@ contains
       USE netcdf
       use config_pdaf, only: screen
       use mod_memcount_pdaf, only: memcount
-      use nemo_pdaf, only: i0, j0, ni_p, nj_p, nk_p, nav_lat, nav_lon, nav_lev,&
-                           halo0, halo1, time_counter, ndastp
+      use nemo_pdaf, only: i0, j0, ni_p, nj_p, nk_p, nav_lat, nav_lon, numcat,&
+                           halo0, halo1, time_counter!, ndastp
       use parallel_pdaf, only: mype_model, npes_model, comm_model,MPIerr
       IMPLICIT NONE
       ! Local variables
@@ -105,22 +105,22 @@ contains
       ! nav_lon
       allocate( nav_lon(ni_p, nj_p) )
       allocate( nav_lat(ni_p, nj_p) )
-      ALLOCATE( nav_lev(nk_p) )
+      ALLOCATE( numcat(nk_p) )
       call memcount(1, 'r', 2*ni_p*nj_p + nk_p )
       call check(nf90_inq_varid( ncid, 'nav_lon', varid ))
       call check(nf90_get_var( ncid, varid, nav_lon, [1, 1], [ni_p, nj_p] ))
       ! nav_lat
       call check(nf90_inq_varid( ncid, 'nav_lat', varid ))
       call check(nf90_get_var( ncid, varid, nav_lat, [1, 1], [ni_p, nj_p] ))
-      ! nav_lev
-      call check(nf90_inq_varid( ncid, 'nav_lev', varid ))
-      call check(nf90_get_var( ncid, varid, nav_lev) )
+      ! numcat
+      call check(nf90_inq_varid( ncid, 'numcat', varid ))
+      call check(nf90_get_var( ncid, varid, numcat) )
       ! time_counter
       call check(nf90_inq_varid( ncid, 'time_counter', varid ))
       call check(nf90_get_var( ncid, varid, time_counter, [1], [1] ))
       !ndastp
-      call check(nf90_inq_varid( ncid, 'ndastp', varid ))
-      call check(nf90_get_var( ncid, varid, ndastp))
+      !!call check(nf90_inq_varid( ncid, 'ndastp', varid ))
+      !!call check(nf90_get_var( ncid, varid, ndastp))
       ! Close the NetCDF files
       call check (nf90_close( ncid ))
       i0 = dom_pos_first(1)
@@ -231,12 +231,14 @@ contains
       ! Close the NetCDF file
       call check (nf90_close( ncid ))
       ! *** Screen output ***
+      nk_p = 6
+      jpk = 6
       if (mype_model==0 .and. screen>0) then
          write (*,'(/a,5x,a)') 'NEMO-PDAF', '*** NEMO: grid dimensions ***'
          write(*,'(a,3x,2(6x,a),9x,a)') 'NEMO-PDAF', 'jpiglo','jpjglo','jpk'
          write(*,'(a,3x,3i12)') 'NEMO-PDAF', jpiglo, jpjglo, jpk
          write(*,'(a,5x,a,i12)') 'NEMO-PDAF', 'Dimension of global 3D grid box', jpiglo*jpjglo*jpk
-         write(*,'(a,5x,a,i12)') 'NEMO-PDAF', 'Number of global surface points', jpiglo*jpjglo
+         write(*,'(a,5x,a,i12)') 'NEMO-PDAF', 'Number of sea ice points', jpiglo*jpjglo
       end if
       !
       call MPI_Barrier(comm_model, MPIerr)
@@ -246,6 +248,10 @@ contains
          write(*,'(a,2x,a,1x,i4,1x,a,i12)') &
                'NEMO-PDAF', 'PE', mype_model, 'Number of local surface points', ni_p * nj_p
       end if
+   !!!******
+   nk_p = 6   !HORRID
+   jpk = 6    !HORRID
+
    END SUBROUTINE read_global_domain
 
    !> Read restart file to form state vector
@@ -267,6 +273,7 @@ contains
       INTEGER :: ncid             ! netCDF file identifier
       INTEGER :: varid            ! variable identifier
       integer :: i                ! counter
+      integer :: ncat             ! numcat harcoded here for now; FIX
       ! Construct restart file path
       call add_slash(path_rst_root)
       write(path_rst, '(a,i0,"/",a)') TRIM(path_rst_root)//TRIM(ens_prefix), &
@@ -275,8 +282,9 @@ contains
 
       if (verbose_io>0 .and. mype_model==0) &
             write(*,'(a,4x,a)') 'NEMO-PDAF','*** Ensemble: Reading model restart file'
-
-      if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
+      !!HACKING DIMENSION HERE  - need to get numcat = 6 from somewhere
+      ncat = 6
+      if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, ncat, 1))
 
       ! Initialize state
       state_p = 0.0_pwp
@@ -292,9 +300,19 @@ contains
          call check( nf90_open(trim(path_rst)//trim(fname)//'.nc', nf90_nowrite, ncid) )
          !  Read field
          call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_n), varid) )
+
+
          if (sfields(i)%ndims == 3) then
             call check( nf90_get_var(ncid, varid, tmp_4d, &
-                  start=[1, 1, 1, 1], count=[ni_p, nj_p, nk_p, 1]) )
+                  start=[1, 1, 1, 1], count=[ni_p, nj_p, ncat, 1]) )
+                  !write(*,*) ni_p,nj_p,ncat
+                          write(*,*) "==== AFTER nf90_get_var ===="
+!write(*,*) "i=", i, " variable=", trim(sfields(i)%variable)
+write(*,*) "tmp_4d min/max:", minval(tmp_4d), maxval(tmp_4d)
+!write(*,*) "tmp_4d(1,1,1,1):", tmp_4d(1,1,1,1)
+!write(*,*) "tmp_4d(ni,nj,1,1):", tmp_4d(ni_p,nj_p,1,1)
+
+
          else
             call check( nf90_get_var(ncid, varid, tmp_4d(:,:,1,1), &
                   start=[1, 1, 1], count=[ni_p, nj_p, 1]) )
@@ -302,12 +320,18 @@ contains
          ! Close the file
          call check( nf90_close(ncid) )
          ! Convert field to state vector
+!!write(*,*) "==== BEFORE field2state ===="
+!!write(*,*) "shape tmp_4d:", shape(tmp_4d)
+!!write(*,*) "offset:", sfields(i)%off
+!!write(*,*) "ndims:", sfields(i)%ndims
+!!write(*,*) "sample:", tmp_4d(1,1,1,1)
+
          call field2state(tmp_4d, state_p, sfields(i)%off, sfields(i)%ndims)
       end do
 
       if (verbose_io>2) then
          do i = 1, n_fields
-            write(*,*) 'Min and max for ',trim(sfields(i)%variable),' :     ', &
+            write(*,*) 'Min and max for ',i,trim(sfields(i)%variable),' :     ', &
                   minval(state_p(sfields(i)%off+1:sfields(i)%off+sfields(i)%dim)), &
                   maxval(state_p(sfields(i)%off+1:sfields(i)%off+sfields(i)%dim))
          enddo
@@ -320,7 +344,7 @@ contains
       use netcdf
       use config_pdaf, only: screen
       use nemo_pdaf, only: ni_p, nj_p, nk_p, jpiglo, jpjglo, halo0, halo1, &
-                           i0, j0, nav_lat, nav_lon, time_counter, nav_lev, ndastp
+                           i0, j0, nav_lat, nav_lon, time_counter, numcat!, ndastp
       use parallel_pdaf, only: mype_model, npes_model
       use statevector_pdaf, only: n_fields, sfields
       use transforms_pdaf, only: state2field, transform_field_mv
@@ -348,7 +372,7 @@ contains
       ! **********************
       if (verbose_io>0 .and. mype_model==0) write (*,'(8x,a)') '--- Write increment file'
       ! *** Set increment times ***
-      time = ndastp + real(nn_time0, pwp)*0.0001_pwp
+      !!time = ndastp + real(nn_time0, pwp)*0.0001_pwp
       ! Prepare file writing
       if (.not. allocated(tmp_4d)) allocate(tmp_4d(ni_p, nj_p, nk_p, 1))
       nf_prec = NF90_DOUBLE
@@ -404,7 +428,7 @@ contains
       call check( NF90_DEF_VAR(ncid, 'time_counter', NF90_DOUBLE, dimids_field(4), id_time_counter))
       call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
       call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
-      call check( NF90_DEF_VAR(ncid, 'nav_lev', NF90_FLOAT, dimids_field(3), id_lev))
+      call check( NF90_DEF_VAR(ncid, 'numcat', NF90_FLOAT, dimids_field(3), id_lev))
       if (do_deflate) then
          call check( NF90_def_var_deflate(ncid, id_lat, 0, 1, 1) )
          call check( NF90_def_var_deflate(ncid, id_lon, 0, 1, 1) )
@@ -434,7 +458,7 @@ contains
 
       call check( nf90_put_var(ncid, id_lon, nav_lon, startC, countC))
       call check( nf90_put_var(ncid, id_lat, nav_lat, startC, countC))
-      call check( nf90_put_var(ncid, id_lev, nav_lev, [1], [nk_p]))
+      call check( nf90_put_var(ncid, id_lev, numcat, [1], [nk_p]))
       call check( nf90_put_var(ncid, id_time_counter, time_counter, start=[1], count=[1]))
       ! keep all time attributes identical as NEMO assigns dateb=datef=time
       call check( nf90_put_var(ncid, id_time, time))
@@ -478,7 +502,7 @@ contains
       use netcdf
       use config_pdaf, only: screen
       use nemo_pdaf, only: ni_p, nj_p, nk_p, jpiglo, jpjglo, halo0, halo1, &
-                           i0, j0, nav_lat, nav_lon, time_counter, nav_lev, ndastp
+                           i0, j0, nav_lat, nav_lon, time_counter, numcat, ndastp
       use parallel_pdaf, only: mype_model, npes_model
       use statevector_pdaf, only: n_fields, sfields
       use transforms_pdaf, only: state2field, transform_field_mv
@@ -555,7 +579,7 @@ contains
       call check( NF90_DEF_VAR(ncid, 'time_counter', NF90_DOUBLE, id_time_counter))
       call check( NF90_DEF_VAR(ncid, 'nav_lat', NF90_FLOAT, dimids_field(1:2), id_lat))
       call check( NF90_DEF_VAR(ncid, 'nav_lon', NF90_FLOAT, dimids_field(1:2), id_lon))
-      call check( NF90_DEF_VAR(ncid, 'nav_lev', NF90_FLOAT, dimids_field(3), id_lev))
+      call check( NF90_DEF_VAR(ncid, 'numcat', NF90_FLOAT, dimids_field(3), id_lev))
       if (do_deflate) then
          call check( NF90_def_var_deflate(ncid, id_lat, 0, 1, 1) )
          call check( NF90_def_var_deflate(ncid, id_lon, 0, 1, 1) )
@@ -585,7 +609,7 @@ contains
 
       call check( nf90_put_var(ncid, id_lon, nav_lon, startC, countC))
       call check( nf90_put_var(ncid, id_lat, nav_lat, startC, countC))
-      call check( nf90_put_var(ncid, id_lev, nav_lev, [1], [nk_p]))
+      call check( nf90_put_var(ncid, id_lev, numcat, [1], [nk_p]))
       call check( nf90_put_var(ncid, id_time_counter, time_counter, start=[1], count=[1]))
       ! keep all time attributes identical as NEMO assigns dateb=datef=time
       call check( nf90_put_var(ncid, id_rdastp, ndastp))

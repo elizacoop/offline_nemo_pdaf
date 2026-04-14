@@ -45,8 +45,10 @@ contains
       integer :: cnt
       integer :: n_levels
       ! *** Set number of model layers ***
+      write(*,*) nlvls,nwet,offset
+
       if (ndims == 3) then
-         n_levels = nlvls
+         n_levels = 6!nlvls
       else
          n_levels = 1
       end if
@@ -63,7 +65,7 @@ contains
 !$OMP END PARALLEL DO
          end do
          ! deal with nwet = 0 case
-         if (nwet == 0) state(offset+1) = 0.0_pwp
+         if (nwet == 0) state(1) = 0.0_pwp
       elseif (use_wet_state==2) then
          if (ndims == 3) then
 !$OMP PARALLEL DO PRIVATE (i, k, cnt)
@@ -112,7 +114,7 @@ contains
       integer :: n_levels
       ! *** Set number of model layers ***
       if (ndims == 3) then
-         n_levels = nlvls
+         n_levels = 6
       else
          n_levels = 1
       end if
@@ -206,13 +208,13 @@ contains
       integer :: n_levels
       ! *** Set number of model layers ***
       if (ndims == 3) then
-         n_levels = nlvls
+         n_levels = 6
       else
          n_levels = 1
       end if
       ! *** Initialize model field from state vector
       if (use_wet_state==1) then
-         do k = 1, nlvls
+         do k = 1, 6
 !$OMP PARALLEL DO PRIVATE (i, cnt)
             do i = 1, nwet
                cnt = i + nwet*(k-1) + offset
@@ -273,7 +275,7 @@ contains
 
       ! *** Set number of model layers ***
       if (ndims == 3) then
-         n_levels = nlvls
+         n_levels = 6
       else
          n_levels = 1
       end if
@@ -283,7 +285,7 @@ contains
 
       if (use_wet_state==1) then
 
-         do k = 1, nlvls
+         do k = 1, 6
 !$OMP PARALLEL DO PRIVATE (i, cnt)
             do i = 1, nwet
                cnt = i + nwet*(k-1) + offset

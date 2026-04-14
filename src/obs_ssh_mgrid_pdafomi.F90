@@ -88,7 +88,7 @@ contains
    subroutine init_dim_obs_ssh_mgrid(step, dim_obs)
       use PDAF, only: PDAFomi_gather_obs
       use statevector_pdaf, only: sfields
-      use nemo_pdaf, only: nwet, wet_pts, glamt, gphit, jpiglo, jpjglo
+      use nemo_pdaf, only: nwet, wet_pts, glamt, gphit, jpiglo, jpjglo,i0,j0
       use io_pdaf, only: check
 
       integer, intent(in)    :: step    !< Current time step
@@ -126,14 +126,24 @@ contains
          write (*, '(a,4x,a,i0)') 'NEMO-PDAF', '--- reading nc_step: ', nc_step
       end if
 
-      allocate(obs_global(jpiglo, jpjglo))
+      allocate(obs_global(jpjglo, jpiglo))
 
       call check( nf90_open(trim(file_ssh_mgrid), NF90_NOWRITE, ncid) )
       call check( nf90_inq_varid(ncid, trim(varname_ssh_mgrid), id_var) )
 
-      pos = (/1, 1, nc_step/)
-      cnt = (/jpiglo, jpjglo, 1/)
+      
+      pos = (/nc_step, 1, 1/)
+      cnt = (/1, jpjglo, jpiglo/)
       call check( nf90_get_var(ncid, id_var, obs_global, start=pos, count=cnt) )
+      !write(*,*) 'obs_global min/max:', minval(obs_global), maxval(obs_global)
+      !write(*,*) 'obs_global(10,10), (50,50), (100,100):', &
+      !       obs_global(10,10), obs_global(50,50), obs_global(100,100)
+      
+      
+      
+      !pos = (/nc_step, 1, 1/)
+      !cnt = (/jpiglo, jpjglo, 1/)
+      !call check( nf90_get_var(ncid, id_var, obs_global, start=pos, count=cnt) )
       call check( nf90_close(ncid) )
 
       ! ***********************************************************
@@ -148,9 +158,19 @@ contains
          allocate(ivar_obs_p(dim_obs_p))
 
          do i = 1, nwet
+
+            if (i <= 5) then
+               write(*,*) 'wet_pts global:', wet_pts(1,i), wet_pts(2,i), &
+                 'local:', wet_pts(6,i), wet_pts(7,i), &
+                 'obs:', obs_global(wet_pts(2,i), wet_pts(1,i)), &
+                 'glamt:', glamt(wet_pts(6,i), wet_pts(7,i))
+             end if
             ! Read SSH at this wet point from the global field.
             ! wet_pts(6,:) and wet_pts(7,:) hold the global i/j indices.
-            obs_p(i) = obs_global(wet_pts(6, i), wet_pts(7, i))
+            !obs_p(i) = obs_global(wet_pts(6, i), wet_pts(7, i))
+            !obs_p(i) = obs_global(wet_pts(7, i), wet_pts(6, i))
+            !obs_p(i) = obs_global(wet_pts(7, i) + j0 - 1, wet_pts(6, i) + istart - i0)
+            obs_p(i) = obs_global(wet_pts(2, i), wet_pts(1, i)) !!**IS THIS RIGHT??
 
             ! Observation coordinates in radians (required by PDAFOMI Haversine)
             ocoord_p(1, i) = glamt(wet_pts(6, i), wet_pts(7, i)) * rad_conv
@@ -171,6 +191,15 @@ contains
          thisobs%id_obs_p(1, 1) = 1
       end if
 
+
+     !if (mype_filter == 48) then
+   write (*, '(a,4x,a)') 'NEMO-PDAF', '--- Sample SSH observations:'
+   do i = 1, min(3,dim_obs_p)
+      write (*, '(a,4x,a,i5,a,f12.6)') 'NEMO-PDAF', '    obs(', i, ') = ', obs_p(i)
+   end do
+      !end if
+
+
       deallocate(obs_global)
 
       ! ****************************************************************
@@ -186,7 +215,7 @@ contains
       ! ****************************************
       call PDAFomi_gather_obs(thisobs, dim_obs_p, obs_p, ivar_obs_p, ocoord_p, &
                               thisobs%ncoord, lradius, dim_obs)
-
+      write(*,*) 'dim_obs_p:', dim_obs_p
       ! ********************
       ! *** Finishing up ***
       ! ********************
