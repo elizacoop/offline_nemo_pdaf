@@ -25,11 +25,14 @@ module statevector_pdaf
       integer :: ndims = 0                    !< Number of field dimensions (2 or 3)
       integer :: dim = 0                      !< Dimension of the field
       integer :: off = 0                      !< Offset of field in state vector
-      character(len=10)  :: variable = ''     !< Name of field
-      character(len=20)  :: name_incr = ''    !< Name of field in increment file
+      character(len=20)  :: variable = ''     !< Name of field
+      character(len=30)  :: name_incr = ''    !< Name of field in increment file
       character(len=20)  :: name_rest_n = ''  !< Name of field in restart file (n-field)
+      character(len=30)  :: name_bkg_din = '' !< Name of field in background file for direct initialization
+                                              !< NEMO reads only ocean physics variables
+                                              !< other variables are still be output for sanity checks
       character(len=256) :: rst_file = ''     !< Name of restart file
-      character(len=3)  :: k_name = 'lev'    !< Name of field in vertical direction
+      character(len=3)   :: k_name = 'lev'    !< Name of field in vertical level direction
                                               !< 'lev' for vertical levels
                                               !< or 'cat' for sea ice categories
                                               !< luckily, all variables with numcat
@@ -37,8 +40,9 @@ module statevector_pdaf
                                               !< This could be different for other sea ice models.
                                               !< but let's keep it the case for now.
       character(len=20)  :: operation = ''    !< operations to form state vector
-                                              !< only 'sum_over_cat' is implemented so far,
-                                              !< which sums up all variables in names_rest_n string
+                                              !< 'sum_over_cat_ice': summation over sea ice categories
+                                              !< 'select_cat_ice': selection of a specific sea ice category
+      integer            :: ice_cat = 0       !< sea ice category to select if operation is 'select_cat_ice'
       character(len=20)  :: unit = ''         !< Unit of variable
       integer :: transform = 0                !< Type of variable transformation
       real(pwp) :: trafo_shift = 0.0_pwp      !< Constant to shift value in transformation

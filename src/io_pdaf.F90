@@ -274,6 +274,7 @@ contains
       INTEGER :: varid             ! variable identifier
       integer :: i, k              ! counter
       integer :: nk                ! number of levels for given variable
+      integer :: start_k           ! starting level for reading variable (for handling sea ice categories)
       integer :: ndims             ! number of dimensions of variable in restart file
       ! Construct restart file path
       call add_slash(path_rst_root)
@@ -301,23 +302,36 @@ contains
          !  Read field
          call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_n), varid) )
          call check( nf90_inquire_variable(ncid, varid, ndims=ndims) )
-         if (ndims == 3) then
+         if (ndims == 4) then
+            start_k = 1
             if (sfields(i)%k_name == 'cat') then
                nk = numcat
+               ! specific operation for selecting sea ice category to reduce repeating reading
+               if (trim(adjustl(sfields(i)%operation)) == 'select_cat_ice') then
+                  if (sfields(i)%ice_cat > 0 .and. sfields(i)%ice_cat <= numcat) then
+                     nk = 1
+                     start_k = sfields(i)%ice_cat
+                  else
+                     write(*,'(a,2x,a,2x,i0,2x,a)') 'NEMO-PDAF', &
+                        'Invalid sea ice category (', sfields(i)%ice_cat, ') selected for variable: '// &
+                        trim(sfields(i)%variable)
+                  end if
+               end if
             else
                nk = nk_p
             end if
             call check( nf90_get_var(ncid, varid, tmp_4d(:, :, :nk, 1), &
-                  start=[1, 1, 1, 1], count=[ni_p, nj_p, nk, 1]) )
+                  start=[1, 1, start_k, 1], count=[ni_p, nj_p, nk, 1]) )
          else
             call check( nf90_get_var(ncid, varid, tmp_4d(:,:,1,1), &
                   start=[1, 1, 1], count=[ni_p, nj_p, 1]) )
          end if
          ! operations to form state vector
-         if (trim(adjustl(sfields(i)%operation)) == 'sum_over_cat') then
+         if (trim(adjustl(sfields(i)%operation)) == 'sum_over_cat_ice') then
             do k = 2, nk
                tmp_4d(:,:,1,1) = tmp_4d(:,:,1,1) + tmp_4d(:,:,k,1)
             end do
+         else if (trim(adjustl(sfields(i)%operation)) == 'select_cat_ice') then
          else if (trim(adjustl(sfields(i)%operation)) == '') then
          else
             write(*,'(a,2x,a)') 'NEMO-PDAF', 'Unknown operation for combining variables in restart file: '// &
@@ -589,11 +603,11 @@ contains
       do i = 1, n_fields
          if (sfields(i)%ndims==3) then
             dimids_field(3)=dimid_lvls
-            call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_rest_n), &
+            call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_bkg_din), &
                                      nf_prec, dimids_field(1:4), id_bkg) )
          else
             dimids_field(3)=dimid_time
-            call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_rest_n), &
+            call check( NF90_DEF_VAR(ncid, trim(sfields(i)%name_bkg_din), &
                                      nf_prec, dimids_field(1:3), id_bkg) )
          end if
          if (do_deflate) &
@@ -622,7 +636,7 @@ contains
          call state2field(state_f, tmp_4d, sfields(i)%off, sfields(i)%ndims)
          if (verbose_io>1 .and. mype_model==0) &
          write (*,'(a,1x,a,a)') 'NEMO-PDAF', '--- write bkg variable: ', trim(sfields(i)%variable)
-         call check( nf90_inq_varid(ncid, trim(sfields(i)%name_rest_n), id_bkg) )
+         call check( nf90_inq_varid(ncid, trim(sfields(i)%name_bkg_din), id_bkg) )
          if (sfields(i)%ndims==3) then
             countt(3) = nk_p
             call check( nf90_put_var(ncid, id_bkg, tmp_4d, startt, countt))
