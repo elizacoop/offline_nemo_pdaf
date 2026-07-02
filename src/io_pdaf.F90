@@ -38,8 +38,7 @@ module io_pdaf
                                                  ! the dimension should be (x,y,z,time)
 
    namelist /io_nml/ verbose_io, sgldbl_io, path_dom, fname_dom, path_asm_root, &
-                     path_rst_root, ens_prefix, path_rst_suffix,f_basename_rst, &
-                     nn_time0
+                     path_rst_root, ens_prefix, path_rst_suffix,f_basename_rst
 
 contains
    !> Print configuration of IO module
@@ -82,6 +81,10 @@ contains
       integer :: dom_size_local(2)
       integer :: dom_pos_first(2)
       integer :: n_domains
+      integer  ::   ihour, iminute, isecond
+      integer  ::   nhour, nminute
+      real(pwp) :: adatrj, ntime, zdayfrac, ksecs
+
 
       ! Construct restart file path
       call add_slash(path_rst_root)
@@ -115,6 +118,28 @@ contains
       !ndastp
       call check(nf90_inq_varid( ncid, 'ndastp', varid ))
       call check(nf90_get_var( ncid, varid, ndastp))
+      ! nn_time0 from NEMO daymod.F90
+      call check(nf90_inq_varid( ncid, 'adatrj', varid ))
+      call check(nf90_get_var( ncid, varid, adatrj))
+      call check(nf90_inq_varid( ncid, 'ntime', varid ))
+      call check(nf90_get_var( ncid, varid, ntime))
+      nn_time0 = NINT(ntime)
+      ! calculate start time in hours and minutes
+      zdayfrac = adatrj - REAL(INT(adatrj), pwp)
+      ksecs = NINT(zdayfrac * 24*3600.)              ! Nearest second to catch rounding errors in adatrj
+      ihour = ksecs / NINT( 60.*60. )
+      iminute = ksecs / NINT(60.) - ihour*NINT(60.)
+      ! Add to nn_time0
+      nhour   =   nn_time0 / 100
+      nminute = ( nn_time0 - nhour * 100 )
+      nminute = nminute + iminute
+      IF( nminute >= NINT(60.) ) THEN
+         nminute = nminute - NINT(60.)
+         nhour = nhour+1
+      ENDIF
+      nhour=nhour+ihour
+      IF( nhour >= NINT(24.) ) nhour = nhour - NINT(24.)
+      nn_time0 = nhour * 100 + nminute
 
       i0 = dom_pos_first(1)
       j0 = dom_pos_first(2)
